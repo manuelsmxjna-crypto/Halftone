@@ -356,6 +356,21 @@ body[data-ux="advanced"] .simple-only{display:none !important}
   font-size:11px;color:var(--muted);line-height:1.4;
   margin-top:8px;text-align:center;
 }
+
+/* Simple halftone workspace: the three production decisions stay together. */
+.simple-halftone-panel{display:grid;gap:14px;margin-top:10px}
+.simple-mode-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.simple-mode-btn{border:1px solid var(--border);background:rgba(255,255,255,.035);color:var(--muted);border-radius:9px;padding:10px 12px;cursor:pointer;font:inherit;font-size:12px;font-weight:700}
+.simple-mode-btn.active{color:var(--text);border-color:var(--cyan);background:rgba(34,224,211,.13);box-shadow:inset 0 0 0 1px rgba(34,224,211,.18)}
+.neon-detected{display:none;align-items:center;gap:8px;padding:9px 11px;border:1px solid rgba(255,77,216,.4);border-radius:9px;background:rgba(255,77,216,.09);color:#ffd7f6;font-size:11px;line-height:1.35}
+.neon-detected.on{display:flex}
+.simple-control-meta{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:-7px;color:var(--muted);font-size:10px}
+.dot-preview{width:92px;height:30px;display:flex;align-items:center;justify-content:space-around;border:1px solid var(--border);border-radius:8px;background:#0a0d14;overflow:hidden}
+.dot-preview i{display:block;width:var(--dot-size,7px);height:var(--dot-size,7px);border-radius:50%;background:var(--cyan);box-shadow:0 0 6px rgba(34,224,211,.45)}
+.simple-summary{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-top:4px;border-top:1px solid var(--border);font-size:11px;color:var(--muted)}
+.simple-summary strong{color:var(--text)}
+.btn-reset-levels{border:0;background:transparent;color:var(--cyan);font:inherit;font-size:11px;font-weight:700;cursor:pointer;padding:6px 0}
+@media(max-width:560px){.simple-mode-row{grid-template-columns:1fr}.dot-preview{width:76px}}
 .mode-btn .mode-tag{
   font-size:9px;text-transform:uppercase;letter-spacing:.6px;
   color:var(--muted);font-weight:600;
@@ -1853,12 +1868,30 @@ body[data-ux="advanced"] .simple-only{display:none !important}
 
       <!-- Photoshop-style input levels for Simple mode. These controls
            write directly to the canonical black_cut / white_cut inputs. -->
-      <div class="simple-only">
-        <label>Black level <i class="help" data-tip="Like Photoshop Levels: move right to map more dark tones to transparent black and increase shadow contrast.">?</i><span class="val" id="v_s_black_level">10</span></label>
+      <div class="simple-only simple-halftone-panel">
+        <div>
+          <label id="simpleTypeLabel">Tipo de imagen <i class="help" data-tip="Normal usa luminosidad; Neón convierte la transparencia gradual del PNG en puntos imprimibles.">?</i></label>
+          <div class="simple-mode-row" id="simpleModeToggle">
+            <button type="button" class="simple-mode-btn active" data-simple-mode="luminance">Imagen normal</button>
+            <button type="button" class="simple-mode-btn" data-simple-mode="alpha">Neón / semitransparencia</button>
+          </div>
+        </div>
+        <div class="neon-detected" id="neonDetected"><span>✨</span><span id="neonDetectedText">Semitransparencia detectada · Modo Neón activado automáticamente</span></div>
+
+        <label for="s_black_level">Black level <i class="help" data-tip="Like Photoshop Levels: move right to map more dark tones to transparent black and increase shadow contrast.">?</i><span class="val" id="v_s_black_level">10</span></label>
         <input type="range" id="s_black_level" min="0" max="180" step="1" value="10">
 
-        <label>White level <i class="help" data-tip="Like Photoshop Levels: move left to map more light tones to solid white ink and brighten highlights.">?</i><span class="val" id="v_s_white_level">228</span></label>
+        <label for="s_white_level">White level <i class="help" data-tip="Like Photoshop Levels: move left to map more light tones to solid white ink and brighten highlights.">?</i><span class="val" id="v_s_white_level">228</span></label>
         <input type="range" id="s_white_level" min="80" max="255" step="1" value="228">
+
+        <label for="s_lpi">Lineatura / tamaño del punto <i class="help" data-tip="LPI bajo produce puntos grandes; LPI alto produce puntos pequeños y una trama más fina.">?</i><span class="val" id="v_s_lpi">50 LPI</span></label>
+        <input type="range" id="s_lpi" min="15" max="65" step="1" value="50">
+        <div class="simple-control-meta"><span id="s_lpi_word">Punto fino</span><span class="dot-preview" id="dotPreview" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span></div>
+
+        <div class="simple-summary">
+          <span><span id="coverageLabel">Cobertura estimada:</span> <strong id="inkCoverage">—</strong></span>
+          <button type="button" class="btn-reset-levels" id="resetSimpleControls">Restaurar valores</button>
+        </div>
 
         <!-- Legacy garment mappings remain internal for colored-garment
              separation, but no longer appear as user-facing strengths. -->
@@ -2084,6 +2117,11 @@ body[data-ux="advanced"] .simple-only{display:none !important}
   const FAST_MODE_CAP = 1200;   // largo máximo en px al usar "calidad rápida"
 
   const $ = (id) => document.getElementById(id);
+  // Translation state must exist before any early UI initializer (such as
+  // the Simple-mode LPI preview) calls T(). Keeping it here avoids a TDZ
+  // crash that would prevent upload handlers from being registered.
+  let LANG = 'en';
+  function T(en, es){ return LANG === 'es' ? es : en; }
 
   // ==================================================================
   //   WEB WORKER — keeps the UI lag-free during heavy pixel work
@@ -2533,6 +2571,8 @@ body[data-ux="advanced"] .simple-only{display:none !important}
     fileSize: 0,                 // bytes (para mostrar tamaño en la file-card)
     fileHasAlpha: false,         // si el PNG fuente tiene transparencia real
     alphaProfile: null,          // sampled {transparent, partial, opaque, partialFraction}
+    alphaAutoDetected: false,
+    livePreview: false,
     // UX
     uxMode: 'simple',            // 'simple' | 'advanced' — qué controles ve el usuario
     garmentPreset: 'negra',      // preset de tipo de prenda activo (ver GARMENT_PRESETS)
@@ -2632,6 +2672,11 @@ body[data-ux="advanced"] .simple-only{display:none !important}
     if (simpleWhite){
       simpleWhite.value = clamp(Math.round(whiteCut), 80, 255);
       $('v_s_white_level').textContent = simpleWhite.value;
+    }
+    const simpleLpi = $('s_lpi');
+    if (simpleLpi){
+      simpleLpi.value = clamp(Math.round(parseFloat($('lpi').value)), 15, 65);
+      updateSimpleLpiVisual(simpleLpi.value);
     }
 
     // Keep the old hidden garment-distance mapping synchronized for color
@@ -2892,6 +2937,7 @@ body[data-ux="advanced"] .simple-only{display:none !important}
   [
     { source:'s_black_level', target:'black_cut' },
     { source:'s_white_level', target:'white_cut' },
+    { source:'s_lpi', target:'lpi' },
   ].forEach(({ source, target }) => {
     const input = $(source);
     if (!input) return;
@@ -2902,10 +2948,61 @@ body[data-ux="advanced"] .simple-only{display:none !important}
       input.value = value;
       $(target).value = value;
       $('v_' + target).textContent = value;
-      $('v_' + source).textContent = value;
-      if (S.sourceCanvas) scheduleProcess();
+      if (source === 's_lpi') updateSimpleLpiVisual(value);
+      else $('v_' + source).textContent = value;
+      S.halftoneActive = true;
+      S.livePreview = true;
+      if (S.sourceCanvas) scheduleProcess(35);
+    });
+    input.addEventListener('change', () => {
+      S.livePreview = false;
+      if (S.sourceCanvas) scheduleProcess(0);
     });
   });
+
+  function updateSimpleLpiVisual(value){
+    value = Math.max(15, Math.min(65, parseFloat(value) || 50));
+    const label = $('v_s_lpi');
+    const word = $('s_lpi_word');
+    if (label) label.textContent = `${Math.round(value)} LPI`;
+    if (word) word.textContent = value < 30 ? T('Large dot', 'Punto grande') : value < 48 ? T('Medium dot', 'Punto medio') : T('Fine dot', 'Punto fino');
+    const preview = $('dotPreview');
+    if (preview){
+      const size = 4 + (65 - value) / 50 * 10;
+      preview.style.setProperty('--dot-size', `${size.toFixed(1)}px`);
+    }
+  }
+
+  function refreshSimpleModeUI(){
+    document.querySelectorAll('#simpleModeToggle .simple-mode-btn').forEach((b) => {
+      const active = b.dataset.simpleMode === S.separationMode;
+      b.classList.toggle('active', active);
+      b.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+    const detected = $('neonDetected');
+    if (detected) detected.classList.toggle('on', S.separationMode === 'alpha' && S.alphaAutoDetected);
+  }
+
+  document.querySelectorAll('#simpleModeToggle .simple-mode-btn').forEach((b) => {
+    b.addEventListener('click', () => {
+      S.alphaAutoDetected = false;
+      setSeparationMode(b.dataset.simpleMode);
+      S.halftoneActive = true;
+      refreshSimpleModeUI();
+      if (S.sourceCanvas) scheduleProcess(0);
+    });
+  });
+
+  $('resetSimpleControls').addEventListener('click', () => {
+    const defaults = { s_black_level:10, s_white_level:228, s_lpi:50 };
+    Object.entries(defaults).forEach(([id, value]) => {
+      const input = $(id); input.value = value;
+      input.dispatchEvent(new Event('input', { bubbles:true }));
+    });
+    S.livePreview = false;
+    scheduleProcess(0);
+  });
+  updateSimpleLpiVisual($('s_lpi').value);
 
   // ==================================================================
   //   AUTO-DETECTAR COLOR DE PRENDA
@@ -3104,6 +3201,8 @@ body[data-ux="advanced"] .simple-only{display:none !important}
     S.fileSize = 0;
     S.fileHasAlpha = false;
     S.alphaProfile = null;
+    S.alphaAutoDetected = false;
+    S.livePreview = false;
     S.originalSourceCanvas    = null;
     S.originalSourceDpi       = 72;
     S.originalSourceDpiKnown  = false;
@@ -3201,14 +3300,18 @@ body[data-ux="advanced"] .simple-only{display:none !important}
     $('fcAlphaBadge').classList.toggle('on', S.fileHasAlpha);
     const neonLike = S.alphaProfile.partialFraction >= 0.05;
     if (neonLike){
+      S.alphaAutoDetected = true;
       setSeparationMode('alpha');
       $('fcAlphaBadge').title = T(
         'Soft transparency detected — Neon mode selected automatically',
         'Semitransparencia detectada — modo Neón seleccionado automáticamente',
       );
     } else {
+      S.alphaAutoDetected = false;
+      setSeparationMode('luminance');
       $('fcAlphaBadge').title = T('Has transparency', 'Tiene transparencia');
     }
+    refreshSimpleModeUI();
   }
 
   async function loadAndInspect(file){
@@ -3525,7 +3628,7 @@ body[data-ux="advanced"] .simple-only{display:none !important}
   //   PIPELINE · Parámetros
   // ==================================================================
   function readParams(forFinal){
-    const fastMode = !forFinal && $('fast_mode').checked;
+    const fastMode = !forFinal && ($('fast_mode').checked || S.livePreview);
     return {
       brightness: parseFloat($('brightness').value),
       contrast:   parseFloat($('contrast').value),
@@ -4034,6 +4137,7 @@ body[data-ux="advanced"] .simple-only{display:none !important}
       fastMode: p.fastMode,
       halftoneOn: p.halftoneOn,
     };
+    updateInkCoverage(finalAlpha);
 
     paintResultCanvas();
     // Si la vista actual es Máscara o Zonas, repintarla con los nuevos datos
@@ -4064,6 +4168,15 @@ body[data-ux="advanced"] .simple-only{display:none !important}
     const ctx = result.getContext('2d');
     ctx.clearRect(0, 0, r.w, r.h);
     ctx.putImageData(new ImageData(r.colorData, r.w, r.h), 0, 0);
+  }
+
+  function updateInkCoverage(alpha){
+    const out = $('inkCoverage');
+    if (!out || !alpha || !alpha.length) return;
+    const step = Math.max(1, Math.floor(alpha.length / 100000));
+    let sum = 0, count = 0;
+    for (let i = 0; i < alpha.length; i += step){ sum += alpha[i] / 255; count++; }
+    out.textContent = `${(sum / Math.max(1, count) * 100).toFixed(1)}%`;
   }
 
   // ==================================================================
@@ -4577,6 +4690,7 @@ body[data-ux="advanced"] .simple-only{display:none !important}
       b.classList.toggle('active', active);
       b.setAttribute('aria-selected', active ? 'true' : 'false');
     });
+    refreshSimpleModeUI();
     if (S.sourceCanvas) scheduleProcess();
   }
 
@@ -4863,8 +4977,6 @@ body[data-ux="advanced"] .simple-only{display:none !important}
   //   [selector, EN, ES, optional attr]. Dynamic strings (status
   //   messages, color readouts) use the inline T(en, es) helper.
   // ==================================================================
-  let LANG = 'en';
-  function T(en, es){ return LANG === 'es' ? es : en; }
 
   // ==================================================================
   //   UNITS — Inches / Centímetros
@@ -4980,6 +5092,13 @@ body[data-ux="advanced"] .simple-only{display:none !important}
     { labelFor: 's_spread', en: 'Halftone amount ',   es: 'Cantidad de semitono ', textOnly: true },
     { labelFor: 's_black_level', en: 'Black level ', es: 'Nivel de negros ', textOnly: true },
     { labelFor: 's_white_level', en: 'White level ', es: 'Nivel de blancos ', textOnly: true },
+    { sel: '#simpleTypeLabel', en: 'Image type ', es: 'Tipo de imagen ', textOnly: true },
+    { sel: '#simpleModeToggle .simple-mode-btn[data-simple-mode="luminance"]', en: 'Normal image', es: 'Imagen normal', textOnly: true },
+    { sel: '#simpleModeToggle .simple-mode-btn[data-simple-mode="alpha"]', en: 'Neon / transparency', es: 'Neón / semitransparencia', textOnly: true },
+    { sel: '#neonDetectedText', en: 'Soft transparency detected · Neon mode activated automatically', es: 'Semitransparencia detectada · Modo Neón activado automáticamente' },
+    { labelFor: 's_lpi', en: 'Screen ruling / dot size ', es: 'Lineatura / tamaño del punto ', textOnly: true },
+    { sel: '#coverageLabel', en: 'Estimated coverage:', es: 'Cobertura estimada:' },
+    { sel: '#resetSimpleControls', en: 'Reset values', es: 'Restaurar valores', textOnly: true },
     { sel: '#card-garment .advanced-only .section-title', en: 'Separation mode', es: 'Modo de separación' },
     { sel: '.mode-btn[data-mode="luminance"] > span:first-child', en: 'By luminance', es: 'Por luminancia' },
     { sel: '.mode-btn[data-mode="luminance"] .mode-tag', en: 'black garment', es: 'prenda negra' },
@@ -5121,6 +5240,9 @@ body[data-ux="advanced"] .simple-only{display:none !important}
     if (typeof refreshSliderWord === 'function'){
       refreshSliderWord('s_remove');
       refreshSliderWord('s_spread');
+    }
+    if (typeof updateSimpleLpiVisual === 'function' && document.getElementById('s_lpi')){
+      updateSimpleLpiVisual(document.getElementById('s_lpi').value);
     }
     // Intensity hint text is set imperatively (not via the TRANSLATIONS
     // list) so we re-localize it manually on every language switch.
