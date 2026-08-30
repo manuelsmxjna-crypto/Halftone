@@ -96,6 +96,16 @@ function toneFromLuminance(rgba, w, h, blackCut, whiteCut, gamma) {
   }
   return tone;
 }
+function toneFromAlpha(alpha, blackCut, whiteCut, gamma) {
+  const tone = new Float32Array(alpha.length);
+  const denom = Math.max(1, whiteCut - blackCut);
+  for (let i = 0; i < alpha.length; i++) {
+    let v = (alpha[i] - blackCut) / denom;
+    if (v < 0) v = 0; else if (v > 1) v = 1;
+    tone[i] = Math.pow(v, gamma);
+  }
+  return tone;
+}
 function toneFromColorDistance(rgba, w, h, garment, tolUI, featherUI, chromaWeight, preserveLuma, gamma) {
   const N = w * h;
   const tone = new Float32Array(N);
@@ -160,15 +170,43 @@ function makeHalftoneAlpha(tone, w, h, params) {
       counts[idx] += 1;
     }
   }
-  const maxR = cell * 0.72;
-  const minR = Math.max(0, (minDotMm / INCH_MM) * targetDpi);
-  const radii = new Float32Array(totalCells);
+  // The UI specifies printable dot SIZE (diameter), while the geometry
+  // below compares radii. Treating the UI value as a radius doubled the
+  // production floor and collapsed most midtones at higher LPI.
+  const minR = Math.max(0, (minDotMm * 0.5 / INCH_MM) * targetDpi);
+  const coverages = new Float32Array(totalCells);
   for (let i = 0; i < totalCells; i++) {
     if (counts[i] === 0) continue;
-    const avg = sums[i] / counts[i];
-    let r = Math.sqrt(avg) * maxR;
-    if (r < minR) r = 0;
-    radii[i] = r;
+    let coverage = Math.max(0, Math.min(1, sums[i] / counts[i]));
+    if (minR > 0 && coverage > 0 && coverage < 1) {
+      const featureCoverage = Math.min(coverage, 1 - coverage);
+      const featureRadius = cell * Math.sqrt(featureCoverage / Math.PI);
+      if (featureRadius < minR) coverage = coverage < 0.5 ? 0 : 1;
+    }
+    coverages[i] = coverage;
+  }
+
+  // Area-calibrated clustered round screen. Unlike overlapping circles,
+  // this grows ink islands continuously and turns them into shrinking
+  // knockout holes above 50% coverage, like Photoshop's round screen.
+  const LUT_STEPS = 2048;
+  const SAMPLE_SIDE = 192;
+  const samples = new Float32Array(SAMPLE_SIDE * SAMPLE_SIDE);
+  let sampleIndex = 0;
+  for (let sy = 0; sy < SAMPLE_SIDE; sy++) {
+    const v = (sy + 0.5) / SAMPLE_SIDE;
+    for (let sx = 0; sx < SAMPLE_SIDE; sx++) {
+      const u = (sx + 0.5) / SAMPLE_SIDE;
+      samples[sampleIndex++] = Math.cos(2 * Math.PI * u) + Math.cos(2 * Math.PI * v);
+    }
+  }
+  samples.sort();
+  const thresholds = new Float32Array(LUT_STEPS + 1);
+  thresholds[0] = Infinity;
+  thresholds[LUT_STEPS] = -Infinity;
+  for (let i = 1; i < LUT_STEPS; i++) {
+    const q = 1 - i / LUT_STEPS;
+    thresholds[i] = samples[Math.max(0, Math.min(samples.length - 1, Math.floor(q * (samples.length - 1))))];
   }
   const alpha = new Uint8ClampedArray(N);
   const AA = !!softEdges;
@@ -176,9 +214,6 @@ function makeHalftoneAlpha(tone, w, h, params) {
     const yc = y - cy;
     for (let x = 0; x < w; x++) {
       const o = y * w + x;
-      const t = tone[o];
-      if (t >= 0.999) { alpha[o] = 255; continue; }
-      if (t <= 0.001) { alpha[o] = 0; continue; }
       const xc = x - cx;
       const xr = xc * ca + yc * sa + oX;
       const yr = -xc * sa + yc * ca + oY;
@@ -186,18 +221,23 @@ function makeHalftoneAlpha(tone, w, h, params) {
       const iy = (yr / cell) | 0;
       if (ix < 0 || iy < 0 || ix >= cellsX || iy >= cellsY) continue;
       const idx = iy * cellsX + ix;
-      const r = radii[idx];
-      if (r <= 0) continue;
-      const xrc = (ix + 0.5) * cell;
-      const yrc = (iy + 0.5) * cell;
-      const dx = xr - xrc, dy = yr - yrc;
-      const dist = Math.sqrt(dx * dx + dy * dy);
+      const coverage = coverages[idx];
+      if (coverage <= 0) continue;
+      if (coverage >= 1) { alpha[o] = 255; continue; }
+      const u = xr / cell - Math.floor(xr / cell);
+      const v = yr / cell - Math.floor(yr / cell);
+      const spot = Math.cos(2 * Math.PI * u) + Math.cos(2 * Math.PI * v);
+      const lutPos = coverage * LUT_STEPS;
+      const lo = Math.floor(lutPos);
+      const f = lutPos - lo;
+      const threshold = thresholds[lo] * (1 - f) + thresholds[Math.min(LUT_STEPS, lo + 1)] * f;
       if (AA) {
-        const t2 = r - dist + 0.5;
-        if (t2 >= 1) alpha[o] = 255;
-        else if (t2 > 0) alpha[o] = (t2 * 255) | 0;
+        const aaWidth = Math.min(0.5, Math.max(0.02, Math.PI / cell));
+        const edge = (spot - threshold) / aaWidth * 0.5 + 0.5;
+        if (edge >= 1) alpha[o] = 255;
+        else if (edge > 0) alpha[o] = (edge * 255) | 0;
       } else {
-        if (dist <= r) alpha[o] = 255;
+        if (spot >= threshold) alpha[o] = 255;
       }
     }
   }
@@ -216,8 +256,11 @@ self.onmessage = (e) => {
     const baseAlpha = new Uint8ClampedArray(N);
     for (let i = 0; i < N; i++) baseAlpha[i] = data[i * 4 + 3];
 
+    const isAlphaMode = params.separationMode === 'alpha';
     const isColorMode = params.separationMode === 'color' && params.garmentLab;
-    const tone = isColorMode
+    const tone = isAlphaMode
+      ? toneFromAlpha(baseAlpha, params.blackCut, params.whiteCut, params.gamma)
+      : isColorMode
       ? toneFromColorDistance(
         data, width, height,
         params.garmentLab, params.colorTol, params.colorFeather,
@@ -235,8 +278,12 @@ self.onmessage = (e) => {
 
     const finalAlpha = new Uint8ClampedArray(N);
     for (let i = 0; i < N; i++) {
-      let a = baseAlpha[i];
-      if (screenAlpha && screenAlpha[i] < a) a = screenAlpha[i];
+      // In alpha/neon mode, partial source alpha is the tonal input to the
+      // screen, not a cap applied afterwards. This converts glow opacity to
+      // printable dot coverage instead of discarding everything below 128.
+      let a = screenAlpha
+        ? (isAlphaMode ? (baseAlpha[i] === 0 ? 0 : screenAlpha[i]) : Math.min(baseAlpha[i], screenAlpha[i]))
+        : baseAlpha[i];
       finalAlpha[i] = a;
       data[i * 4 + 3] = a;
     }

@@ -13,7 +13,9 @@ Herramienta web 100 % en el navegador para preparar arte de impresión DTF / ser
 - **Upscale con IA (Real-ESRGAN)** opcional: corre 100 % en el navegador con ONNX Runtime Web + WebGPU (con fallback a WASM). Útil cuando la imagen llega chica para el tamaño físico de impresión y el bicúbico no alcanza.
 - **Gotero estilo Photoshop**: cursor de cruz, click en cualquier parte de la imagen para muestrear el color, Esc para cancelar.
 - **Removedor de fondo configurable**: tolerancia + suavizado para evitar halos duros.
-- **Trama AM** (puntos redondos) con LPI, ángulo y punto mínimo en mm.
+- **Trama AM calibrada por área** con LPI, ángulo y diámetro mínimo imprimible en mm. Los puntos crecen hasta medios tonos y se convierten en huecos decrecientes por encima de 50%, evitando la superposición y el cierre prematuro de sombras.
+- **Controles directos tipo Photoshop** para nivel de negros, nivel de blancos y lineatura LPI. La configuración inicial conserva un rango tonal amplio y usa una trama de 50 LPI.
+- **Modo Transparencia / Neón** que convierte el alfa gradual de un PNG en cobertura binaria de puntos sin perder sus colores RGB. Se activa automáticamente cuando al menos 5% de la muestra contiene alfa parcial.
 - **Visor con zoom y pan** estilo Photoshop: rueda para zoom centrado en el cursor, clic-arrastrar para mover, atajos `0`, `1`, `+`, `−`, `C`, doble clic para ajustar.
 - **Tiempo real**: cualquier slider actualiza el resultado al instante.
 - **PNG con DPI embebido**: el archivo descargado lleva el chunk `pHYs` correcto.

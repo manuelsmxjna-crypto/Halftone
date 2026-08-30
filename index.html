@@ -308,14 +308,14 @@ body[data-ux="advanced"] .simple-only{display:none !important}
   box-shadow:inset 0 0 0 1px var(--cyan)}
 
 /* ==================================================================
-   INTENSITY TOGGLE — Light / Balanced / Strong
+   INTENSITY TOGGLE — Photoshop / Light / Balanced / Strong
    ==================================================================
    Replaces the two "How much to remove" / "Halftone amount" sliders
    in Simple mode. Three discrete presets that map to sensible
    s_remove + s_spread combinations per garment. Advanced mode still
    exposes the individual sliders. */
 .intensity-toggle{
-  display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;
+  display:grid;grid-template-columns:repeat(4,1fr);gap:6px;
   padding:4px;border-radius:10px;
   background:rgba(255,255,255,.04);
   border:1px solid var(--border);
@@ -1851,30 +1851,17 @@ body[data-ux="advanced"] .simple-only{display:none !important}
         <span id="ppLabel">Color picked</span>
       </div>
 
-      <!-- ============== INTENSITY (modo SIMPLE) ==============
-           Three-button toggle replaces the old s_remove / s_spread
-           sliders. Each button maps to a per-garment (s_remove, s_spread)
-           preset — see INTENSITIES in the JS below. Advanced mode still
-           exposes the individual sliders for fine control. -->
+      <!-- Photoshop-style input levels for Simple mode. These controls
+           write directly to the canonical black_cut / white_cut inputs. -->
       <div class="simple-only">
-        <label id="intensityLabel">Halftone strength <i class="help" data-tip="Preset combinations of removal + halftone width. Light preserves more of the design (subtle effect); Strong removes more of the garment color and produces a wider halftone band.">?</i></label>
-        <div class="intensity-toggle" id="intensityToggle" role="tablist" aria-labelledby="intensityLabel">
-          <button type="button" class="intensity-btn active"   data-intensity="light"    role="tab" aria-selected="true">
-            <span class="intensity-badge" id="intensityBadge">Recommended</span>
-            <span class="intensity-icon">◔</span><span class="intensity-name">Light</span>
-          </button>
-          <button type="button" class="intensity-btn"          data-intensity="balanced" role="tab" aria-selected="false">
-            <span class="intensity-icon">◑</span><span class="intensity-name">Balanced</span>
-          </button>
-          <button type="button" class="intensity-btn"          data-intensity="strong"   role="tab" aria-selected="false">
-            <span class="intensity-icon">●</span><span class="intensity-name">Strong</span>
-          </button>
-        </div>
-        <div class="intensity-hint" id="intensityHint">Light: minimal removal, keeps most of the design intact.</div>
+        <label>Black level <i class="help" data-tip="Like Photoshop Levels: move right to map more dark tones to transparent black and increase shadow contrast.">?</i><span class="val" id="v_s_black_level">10</span></label>
+        <input type="range" id="s_black_level" min="0" max="180" step="1" value="10">
 
-        <!-- The two sliders live on but hidden — SIMPLE_SYNC and the
-             worker keep reading their .value, and the intensity buttons
-             set them programmatically. -->
+        <label>White level <i class="help" data-tip="Like Photoshop Levels: move left to map more light tones to solid white ink and brighten highlights.">?</i><span class="val" id="v_s_white_level">228</span></label>
+        <input type="range" id="s_white_level" min="80" max="255" step="1" value="228">
+
+        <!-- Legacy garment mappings remain internal for colored-garment
+             separation, but no longer appear as user-facing strengths. -->
         <input type="range" id="s_remove" min="-100" max="100" step="1" value="-100" hidden>
         <input type="range" id="s_spread" min="0"    max="100" step="1" value="0"    hidden>
         <span id="v_s_remove" hidden>0</span>
@@ -1894,6 +1881,10 @@ body[data-ux="advanced"] .simple-only{display:none !important}
           <button class="mode-btn" data-mode="color" type="button" role="tab" aria-selected="false">
             <span>By color</span>
             <span class="mode-tag">colored garment</span>
+          </button>
+          <button class="mode-btn" data-mode="alpha" type="button" role="tab" aria-selected="false">
+            <span>Transparency / Neon</span>
+            <span class="mode-tag">soft alpha PNG</span>
           </button>
         </div>
 
@@ -1928,7 +1919,8 @@ body[data-ux="advanced"] .simple-only{display:none !important}
 
       <small class="advanced-only">
         <b>By luminance</b>: dark areas of the image are removed (ideal for <b>black</b> garments).<br>
-        <b>By color</b>: areas matching the chosen garment color are removed (ideal for <b>red, blue, beige</b>, etc.). Halftone appears ONLY in the transition band.
+        <b>By color</b>: areas matching the chosen garment color are removed (ideal for <b>red, blue, beige</b>, etc.).<br>
+        <b>Transparency / Neon</b>: converts gradual PNG opacity into printable binary dots while preserving RGB color.
       </small>
     </div>
 
@@ -1952,14 +1944,14 @@ body[data-ux="advanced"] .simple-only{display:none !important}
              piensan en LPI/ángulo/mín-dot, así que aparecen en ambos modos.
              Anti-alias queda como avanzado porque es decisión de "estética
              1-bit vs suave" que no todos necesitan tocar. -->
-        <label>Screen ruling (LPI) <i class="help" data-tip="Lines per inch. Higher = finer screen (more printable detail, requires higher mesh resolution).">?</i><span class="val" id="v_lpi">35</span></label>
-        <input type="range" id="lpi" min="15" max="65" step="1" value="35">
+        <label>Screen ruling (LPI) <i class="help" data-tip="Lines per inch. Higher = finer screen (more printable detail, requires higher mesh resolution).">?</i><span class="val" id="v_lpi">50</span></label>
+        <input type="range" id="lpi" min="15" max="65" step="1" value="50">
 
         <label>Angle <i class="help" data-tip="Screen angle. 22.5° is the classic angle for single-ink screen printing.">?</i><span class="val" id="v_angle">22.5</span></label>
         <input type="range" id="angle" min="0" max="90" step="0.5" value="22.5">
 
-        <label>Minimum dot (mm) <i class="help" data-tip="Minimum physical size of a printable dot. DTF production floor is ~0.20 mm — finer dots may not transfer reliably (powder buries them, washes blow them out).">?</i><span class="val" id="v_min_dot_mm">0.20</span></label>
-        <input type="range" id="min_dot_mm" min="0.10" max="0.8" step="0.01" value="0.2">
+        <label>Minimum dot diameter (mm) <i class="help" data-tip="Minimum physical dot diameter. About 0.15 mm is the practical DTF floor; larger values sacrifice tonal detail for production robustness.">?</i><span class="val" id="v_min_dot_mm">0.15</span></label>
+        <input type="range" id="min_dot_mm" min="0.10" max="0.8" step="0.01" value="0.15">
         <div class="field-warn" id="min_dot_warn" hidden>⚠ Below the DTF production floor (~0.15 mm). Dots this small may not transfer on standard printers.</div>
 
         <label class="toggle advanced-only">
@@ -2540,10 +2532,11 @@ body[data-ux="advanced"] .simple-only{display:none !important}
     fileFullName: '',            // nombre completo con extensión (para la file-card)
     fileSize: 0,                 // bytes (para mostrar tamaño en la file-card)
     fileHasAlpha: false,         // si el PNG fuente tiene transparencia real
+    alphaProfile: null,          // sampled {transparent, partial, opaque, partialFraction}
     // UX
     uxMode: 'simple',            // 'simple' | 'advanced' — qué controles ve el usuario
     garmentPreset: 'negra',      // preset de tipo de prenda activo (ver GARMENT_PRESETS)
-    intensity:    'light',       // 'light' | 'balanced' | 'strong' — Light is the default (recommended)
+    intensity:    'photoshop',   // broad tonal range; production presets remain available
     // Vistas
     viewMode: 'result',          // 'result' | 'original' | 'mask' | 'zones'
     previewBg: 'checker',        // 'checker' | 'garment' | 'black' | 'white' — solo visual
@@ -2625,17 +2618,35 @@ body[data-ux="advanced"] .simple-only{display:none !important}
   function syncSimpleFromAdvanced(){
     const mode = S.separationMode;
     const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+    const blackCut = parseFloat($('black_cut').value);
+    const whiteCut = parseFloat($('white_cut').value);
+
+    // The visible Simple-mode controls are direct Photoshop-style input
+    // levels, so no lossy preset conversion is needed.
+    const simpleBlack = $('s_black_level');
+    const simpleWhite = $('s_white_level');
+    if (simpleBlack){
+      simpleBlack.value = clamp(Math.round(blackCut), 0, 180);
+      $('v_s_black_level').textContent = simpleBlack.value;
+    }
+    if (simpleWhite){
+      simpleWhite.value = clamp(Math.round(whiteCut), 80, 255);
+      $('v_s_white_level').textContent = simpleWhite.value;
+    }
+
+    // Keep the old hidden garment-distance mapping synchronized for color
+    // separation. It is no longer exposed as Light/Balanced/Strong.
     // s_remove: en color usa la tolerancia; en luminancia el blackCut.
     const remove = mode === 'color'
       ? parseFloat($('color_tol').value)
-      : parseFloat($('black_cut').value);
+      : parseFloat($('black_cut').value) / 80 * 100;
     // Advanced → Simple: advanced sliders are 0..100/0..180, simple is
     // -100..100 with display clamped at 0. Map directly to the 0..100
     // half of the simple slider (negative buffer is only reachable by
     // user drag, not by inverse-syncing advanced values).
     const sRemove = clamp(Math.round(remove), 0, 100);
-    $('s_remove').value = sRemove;
-    $('v_s_remove').textContent = Math.max(0, sRemove);
+    if ($('s_remove')) $('s_remove').value = sRemove;
+    if ($('v_s_remove')) $('v_s_remove').textContent = Math.max(0, sRemove);
     // s_spread: feather en color; ancho de la franja en luminancia.
     let sSpread;
     if (mode === 'color'){
@@ -2643,11 +2654,11 @@ body[data-ux="advanced"] .simple-only{display:none !important}
     } else {
       const bc = parseFloat($('black_cut').value);
       const wc = parseFloat($('white_cut').value);
-      sSpread = Math.round((wc - bc - 80));
+      sSpread = Math.round((wc - bc - 150) / 0.9);
     }
     sSpread = clamp(sSpread, 0, 100);
-    $('s_spread').value = sSpread;
-    $('v_s_spread').textContent = sSpread;
+    if ($('s_spread')) $('s_spread').value = sSpread;
+    if ($('v_s_spread')) $('v_s_spread').textContent = sSpread;
   }
 
   // ==================================================================
@@ -2688,42 +2699,50 @@ body[data-ux="advanced"] .simple-only{display:none !important}
     //   black_cut = max(0,v) * 180 / 100
     //   white_cut = black_cut + 80 + (v/100) * 100
     negra: {
-      light:    { s_remove:  0, s_spread:  0 }, // bc=0,  wc=80
-      balanced: { s_remove: 15, s_spread: 25 }, // bc=27, wc=132
-      strong:   { s_remove: 30, s_spread: 40 }, // bc=54, wc=174
+      photoshop:{ s_remove: 12, s_spread: 75 }, // bc≈10, wc≈228
+      light:    { s_remove:  0, s_spread: 35 }, // bc=0,  wc≈182
+      balanced: { s_remove: 18, s_spread: 65 }, // bc≈14, wc≈223
+      strong:   { s_remove: 28, s_spread:100 }, // bc≈22, wc=255
     },
     // Color-distance presets. tol / feather are UI units → Oklab via /200.
     blanca: {
+      photoshop:{ s_remove: 18, s_spread: 48 },
       light:    { s_remove: 15, s_spread: 40 },
       balanced: { s_remove: 25, s_spread: 60 },
       strong:   { s_remove: 40, s_spread: 80 },
     },
     roja: {
+      photoshop:{ s_remove: 28, s_spread: 22 },
       light:    { s_remove: 25, s_spread: 18 },
       balanced: { s_remove: 40, s_spread: 25 },
       strong:   { s_remove: 55, s_spread: 32 },
     },
     azul: {
+      photoshop:{ s_remove: 28, s_spread: 22 },
       light:    { s_remove: 25, s_spread: 18 },
       balanced: { s_remove: 40, s_spread: 25 },
       strong:   { s_remove: 55, s_spread: 32 },
     },
     verde: {
+      photoshop:{ s_remove: 28, s_spread: 22 },
       light:    { s_remove: 25, s_spread: 18 },
       balanced: { s_remove: 40, s_spread: 25 },
       strong:   { s_remove: 55, s_spread: 32 },
     },
     gris: {
+      photoshop:{ s_remove: 24, s_spread: 22 },
       light:    { s_remove: 20, s_spread: 18 },
       balanced: { s_remove: 35, s_spread: 25 },
       strong:   { s_remove: 50, s_spread: 32 },
     },
     beige: {
+      photoshop:{ s_remove: 22, s_spread: 26 },
       light:    { s_remove: 18, s_spread: 22 },
       balanced: { s_remove: 30, s_spread: 30 },
       strong:   { s_remove: 45, s_spread: 40 },
     },
     custom: {
+      photoshop:{ s_remove: 28, s_spread: 22 },
       light:    { s_remove: 25, s_spread: 18 },
       balanced: { s_remove: 40, s_spread: 25 },
       strong:   { s_remove: 55, s_spread: 32 },
@@ -2749,11 +2768,12 @@ body[data-ux="advanced"] .simple-only{display:none !important}
       if (label) label.textContent = v;
       SIMPLE_SYNC[id](v);
     });
+    syncSimpleFromAdvanced();
     if (!(opts && opts.skipReprocess) && S.sourceCanvas) scheduleProcess();
   }
 
   function setIntensity(level){
-    if (!['light','balanced','strong'].includes(level)) return;
+    if (!['photoshop','light','balanced','strong'].includes(level)) return;
     S.intensity = level;
     document.querySelectorAll('#intensityToggle .intensity-btn').forEach((b) => {
       const on = b.dataset.intensity === level;
@@ -2773,11 +2793,13 @@ body[data-ux="advanced"] .simple-only{display:none !important}
 
   const INTENSITY_HINTS = {
     en: {
+      photoshop:'Photoshop: preserves a broad tonal range with a finer, continuous screen.',
       light:    'Light: minimal removal, keeps most of the design intact.',
       balanced: 'Balanced: removes the garment color and halftones the mid-tones.',
       strong:   'Strong: aggressive removal, wide halftone band.',
     },
     es: {
+      photoshop:'Photoshop: conserva un rango tonal amplio con una trama fina y continua.',
       light:    'Ligero: quita muy poco, conserva casi todo el diseño.',
       balanced: 'Balanceado: quita el color de la prenda y halftonea los medios tonos.',
       strong:   'Fuerte: remueve más color y crea una banda de halftone amplia.',
@@ -2836,7 +2858,7 @@ body[data-ux="advanced"] .simple-only{display:none !important}
       const eff = Math.max(0, v);
       $('color_tol').value = eff;
       $('v_color_tol').textContent = eff;
-      const bc = Math.round((eff / 100) * 180);
+      const bc = Math.round((eff / 100) * 80);
       $('black_cut').value = bc;
       $('v_black_cut').textContent = bc;
     },
@@ -2847,7 +2869,7 @@ body[data-ux="advanced"] .simple-only{display:none !important}
       $('v_color_feather').textContent = f;
       // luminancia: ajusta whiteCut para que la franja blackCut↔whiteCut
       // crezca con `v`. blackCut ya viene del s_remove.
-      const wc = Math.min(255, parseInt($('black_cut').value, 10) + 80 + Math.round((v/100) * 100));
+      const wc = Math.min(255, parseInt($('black_cut').value, 10) + 150 + Math.round((v/100) * 90));
       $('white_cut').value = wc;
       $('v_white_cut').textContent = wc;
     },
@@ -2864,6 +2886,25 @@ body[data-ux="advanced"] .simple-only{display:none !important}
   Object.keys(SIMPLE_SYNC).forEach((id) => {
     const el = $(id);
     if (el) SIMPLE_SYNC[id](parseFloat(el.value));
+  });
+
+  // Direct Photoshop-style level controls used in Simple mode.
+  [
+    { source:'s_black_level', target:'black_cut' },
+    { source:'s_white_level', target:'white_cut' },
+  ].forEach(({ source, target }) => {
+    const input = $(source);
+    if (!input) return;
+    input.addEventListener('input', () => {
+      let value = parseFloat(input.value);
+      if (target === 'black_cut') value = Math.min(value, parseFloat($('white_cut').value) - 1);
+      if (target === 'white_cut') value = Math.max(value, parseFloat($('black_cut').value) + 1);
+      input.value = value;
+      $(target).value = value;
+      $('v_' + target).textContent = value;
+      $('v_' + source).textContent = value;
+      if (S.sourceCanvas) scheduleProcess();
+    });
   });
 
   // ==================================================================
@@ -3062,6 +3103,7 @@ body[data-ux="advanced"] .simple-only{display:none !important}
     S.fileFullName = '';
     S.fileSize = 0;
     S.fileHasAlpha = false;
+    S.alphaProfile = null;
     S.originalSourceCanvas    = null;
     S.originalSourceDpi       = 72;
     S.originalSourceDpiKnown  = false;
@@ -3086,20 +3128,29 @@ body[data-ux="advanced"] .simple-only{display:none !important}
     setStatus(T('Ready for a new image.', 'Listo para una nueva imagen.'));
   }
 
-  // Detecta si el canvas fuente tiene algún pixel con alfa < 255.
-  function canvasHasAlpha(c){
+  // Profiles transparency cheaply. A substantial partial-alpha fraction is
+  // characteristic of glow/neon artwork and should be screened from alpha.
+  function analyzeCanvasAlpha(c){
     try{
-      const w = c.width|0, h = c.height|0; if (!w || !h) return false;
+      const w = c.width|0, h = c.height|0;
+      if (!w || !h) return { hasAlpha:false, transparent:0, partial:0, opaque:0, partialFraction:0 };
       const step = Math.max(1, Math.floor(Math.max(w,h) / 256)); // muestreo barato
       const ctx = c.getContext('2d');
       const data = ctx.getImageData(0, 0, w, h).data;
+      let transparent = 0, partial = 0, opaque = 0;
       for (let y = 0; y < h; y += step){
         for (let x = 0; x < w; x += step){
-          if (data[(y*w + x)*4 + 3] < 255) return true;
+          const a = data[(y*w + x)*4 + 3];
+          if (a === 0) transparent++;
+          else if (a === 255) opaque++;
+          else partial++;
         }
       }
-      return false;
-    } catch(_){ return false; }
+      const total = Math.max(1, transparent + partial + opaque);
+      return { hasAlpha:transparent > 0 || partial > 0, transparent, partial, opaque, partialFraction:partial / total };
+    } catch(_){
+      return { hasAlpha:false, transparent:0, partial:0, opaque:0, partialFraction:0 };
+    }
   }
 
   // Genera un thumbnail (data URL) ~96px del lado mayor.
@@ -3145,8 +3196,19 @@ body[data-ux="advanced"] .simple-only{display:none !important}
 
     // Thumbnail + badge de transparencia
     $('fcThumbImg').src = makeThumbDataUrl(c);
-    S.fileHasAlpha = canvasHasAlpha(c);
+    S.alphaProfile = analyzeCanvasAlpha(c);
+    S.fileHasAlpha = S.alphaProfile.hasAlpha;
     $('fcAlphaBadge').classList.toggle('on', S.fileHasAlpha);
+    const neonLike = S.alphaProfile.partialFraction >= 0.05;
+    if (neonLike){
+      setSeparationMode('alpha');
+      $('fcAlphaBadge').title = T(
+        'Soft transparency detected — Neon mode selected automatically',
+        'Semitransparencia detectada — modo Neón seleccionado automáticamente',
+      );
+    } else {
+      $('fcAlphaBadge').title = T('Has transparency', 'Tiene transparencia');
+    }
   }
 
   async function loadAndInspect(file){
@@ -3658,6 +3720,18 @@ body[data-ux="advanced"] .simple-only{display:none !important}
     return tone;
   }
 
+  // Converts gradual PNG transparency directly into printable coverage.
+  function toneFromAlpha(alpha, blackCut, whiteCut, gamma){
+    const tone = new Float32Array(alpha.length);
+    const denom = Math.max(1, whiteCut - blackCut);
+    for (let i = 0; i < alpha.length; i++){
+      let v = (alpha[i] - blackCut) / denom;
+      if (v < 0) v = 0; else if (v > 1) v = 1;
+      tone[i] = Math.pow(v, gamma);
+    }
+    return tone;
+  }
+
   // ---- Tono desde distancia de color (modo prenda de color) ---------
   //   garment = [L, a, b] del color de prenda (precalculado una vez).
   //   tol/feather están en escala UI (0..100 = 0..0.5 OKLab).
@@ -3753,15 +3827,38 @@ body[data-ux="advanced"] .simple-only{display:none !important}
       }
     }
 
-    const maxR = cell * 0.72;
-    const minR = Math.max(0, (minDotMm / INCH_MM) * targetDpi);
-    const radii = new Float32Array(totalCells);
+    // `minDotMm` is a physical diameter; screen geometry uses a radius.
+    const minR = Math.max(0, (minDotMm * 0.5 / INCH_MM) * targetDpi);
+    const coverages = new Float32Array(totalCells);
     for (let i = 0; i < totalCells; i++){
       if (counts[i] === 0) continue;
-      const avg = sums[i] / counts[i];
-      let r = Math.sqrt(avg) * maxR;
-      if (r < minR) r = 0;
-      radii[i] = r;
+      let coverage = Math.max(0, Math.min(1, sums[i] / counts[i]));
+      if (minR > 0 && coverage > 0 && coverage < 1){
+        const featureCoverage = Math.min(coverage, 1 - coverage);
+        const featureRadius = cell * Math.sqrt(featureCoverage / Math.PI);
+        if (featureRadius < minR) coverage = coverage < 0.5 ? 0 : 1;
+      }
+      coverages[i] = coverage;
+    }
+
+    const LUT_STEPS = 2048;
+    const SAMPLE_SIDE = 192;
+    const samples = new Float32Array(SAMPLE_SIDE * SAMPLE_SIDE);
+    let sampleIndex = 0;
+    for (let sy = 0; sy < SAMPLE_SIDE; sy++){
+      const v = (sy + 0.5) / SAMPLE_SIDE;
+      for (let sx = 0; sx < SAMPLE_SIDE; sx++){
+        const u = (sx + 0.5) / SAMPLE_SIDE;
+        samples[sampleIndex++] = Math.cos(2 * Math.PI * u) + Math.cos(2 * Math.PI * v);
+      }
+    }
+    samples.sort();
+    const thresholds = new Float32Array(LUT_STEPS + 1);
+    thresholds[0] = Infinity;
+    thresholds[LUT_STEPS] = -Infinity;
+    for (let i = 1; i < LUT_STEPS; i++){
+      const q = 1 - i / LUT_STEPS;
+      thresholds[i] = samples[Math.max(0, Math.min(samples.length - 1, Math.floor(q * (samples.length - 1))))];
     }
 
     const alpha = new Uint8ClampedArray(N);
@@ -3770,12 +3867,6 @@ body[data-ux="advanced"] .simple-only{display:none !important}
       const yc = y - cy;
       for (let x = 0; x < w; x++){
         const o = y * w + x;
-        const t = tone[o];
-        // Early-exits: el semitono solo opera en la ZONA DE TRANSICIÓN.
-        // Fuera de ella el alpha es sólido o transparente directamente.
-        if (t >= 0.999){ alpha[o] = 255; continue; }
-        if (t <= 0.001){ alpha[o] = 0;   continue; }
-
         const xc = x - cx;
         const xr =  xc*ca + yc*sa + oX;
         const yr = -xc*sa + yc*ca + oY;
@@ -3784,20 +3875,23 @@ body[data-ux="advanced"] .simple-only{display:none !important}
         if (ix < 0 || iy < 0 || ix >= cellsX || iy >= cellsY) continue;
         const idx = iy * cellsX + ix;
 
-        const r = radii[idx];
-        if (r <= 0) continue;
-
-        const xrc = (ix + 0.5) * cell;
-        const yrc = (iy + 0.5) * cell;
-        const dx = xr - xrc, dy = yr - yrc;
-        const dist = Math.sqrt(dx*dx + dy*dy);
-
+        const coverage = coverages[idx];
+        if (coverage <= 0) continue;
+        if (coverage >= 1){ alpha[o] = 255; continue; }
+        const u = xr / cell - Math.floor(xr / cell);
+        const v = yr / cell - Math.floor(yr / cell);
+        const spot = Math.cos(2 * Math.PI * u) + Math.cos(2 * Math.PI * v);
+        const lutPos = coverage * LUT_STEPS;
+        const lo = Math.floor(lutPos);
+        const f = lutPos - lo;
+        const threshold = thresholds[lo] * (1 - f) + thresholds[Math.min(LUT_STEPS, lo + 1)] * f;
         if (AA){
-          const t2 = r - dist + 0.5;
-          if (t2 >= 1) alpha[o] = 255;
-          else if (t2 > 0) alpha[o] = (t2 * 255) | 0;
+          const aaWidth = Math.min(0.5, Math.max(0.02, Math.PI / cell));
+          const edge = (spot - threshold) / aaWidth * 0.5 + 0.5;
+          if (edge >= 1) alpha[o] = 255;
+          else if (edge > 0) alpha[o] = (edge * 255) | 0;
         } else {
-          if (dist <= r) alpha[o] = 255;
+          if (spot >= threshold) alpha[o] = 255;
         }
       }
     }
@@ -3821,16 +3915,20 @@ body[data-ux="advanced"] .simple-only{display:none !important}
     const N = work.width * work.height;
     const baseAlpha = new Uint8ClampedArray(N);
     for (let i = 0; i < N; i++) baseAlpha[i] = data[i*4 + 3];
+    const isAlphaMode = p.separationMode === 'alpha';
     const isColorMode = p.separationMode === 'color' && p.garmentLab;
-    const tone = isColorMode
-      ? toneFromColorDistance(data, work.width, work.height, p.garmentLab, p.colorTol, p.colorFeather, p.colorChroma, p.preserveLuma, p.gamma)
-      : toneFromLuminance(data, work.width, work.height, p.blackCut, p.whiteCut, p.gamma);
+    const tone = isAlphaMode
+      ? toneFromAlpha(baseAlpha, p.blackCut, p.whiteCut, p.gamma)
+      : isColorMode
+        ? toneFromColorDistance(data, work.width, work.height, p.garmentLab, p.colorTol, p.colorFeather, p.colorChroma, p.preserveLuma, p.gamma)
+        : toneFromLuminance(data, work.width, work.height, p.blackCut, p.whiteCut, p.gamma);
     let screenAlpha = null;
     if (p.halftoneOn) screenAlpha = makeHalftoneAlpha(tone, work.width, work.height, p);
     const finalAlpha = new Uint8ClampedArray(N);
     for (let i = 0; i < N; i++){
-      let a = baseAlpha[i];
-      if (screenAlpha && screenAlpha[i] < a) a = screenAlpha[i];
+      let a = screenAlpha
+        ? (isAlphaMode ? (baseAlpha[i] === 0 ? 0 : screenAlpha[i]) : Math.min(baseAlpha[i], screenAlpha[i]))
+        : baseAlpha[i];
       finalAlpha[i] = a;
       data[i*4 + 3] = a;
     }
@@ -3947,7 +4045,9 @@ body[data-ux="advanced"] .simple-only{display:none !important}
     enableDownload();
 
     const mode = p.halftoneOn ? 'halftone' : 'adjusted';
-    const sep = p.separationMode === 'color' ? `color (${S.garmentColor.hex})` : 'luminance';
+    const sep = p.separationMode === 'alpha'
+      ? 'transparency/neon'
+      : p.separationMode === 'color' ? `color (${S.garmentColor.hex})` : 'luminance';
     const tag = p.fastMode ? ` (fast preview ${work.width}×${work.height})` : '';
     setStatus(T(`Updated in ${((performance.now()-t0)|0)} ms · ${sep} · ${mode}${tag}`,
                 `Actualizado en ${((performance.now()-t0)|0)} ms · ${sep} · ${mode}${tag}`));
@@ -4462,15 +4562,15 @@ body[data-ux="advanced"] .simple-only{display:none !important}
   });
 
   // ==================================================================
-  //   MODO DE SEPARACIÓN (luminancia ↔ color)
+  //   MODO DE SEPARACIÓN (luminancia ↔ color ↔ alpha/neón)
   // ==================================================================
   //   Cambia qué bloque de controles se ve. NO toca pixeles ni alpha:
   //   solo determina qué función `toneFrom*` usa runProcess para construir
   //   el tono que alimenta al semitono.
   function setSeparationMode(mode){
-    if (!['luminance','color'].includes(mode)) mode = 'luminance';
+    if (!['luminance','color','alpha'].includes(mode)) mode = 'luminance';
     S.separationMode = mode;
-    $('lum-mode-block').classList.toggle('hidden', mode !== 'luminance');
+    $('lum-mode-block').classList.toggle('hidden', mode !== 'luminance' && mode !== 'alpha');
     $('color-mode-block').classList.toggle('hidden', mode !== 'color');
     document.querySelectorAll('#modeToggle .mode-btn').forEach((b) => {
       const active = b.dataset.mode === mode;
@@ -4878,21 +4978,15 @@ body[data-ux="advanced"] .simple-only{display:none !important}
     { sel: '#ppLabel', en: 'Color picked', es: 'Color elegido' },
     { labelFor: 's_remove', en: 'How much to remove ', es: 'Cuánto eliminar ', textOnly: true },
     { labelFor: 's_spread', en: 'Halftone amount ',   es: 'Cantidad de semitono ', textOnly: true },
-    { sel: '#intensityLabel',
-        en: 'Halftone strength ', es: 'Fuerza del semitono ', textOnly: true },
-    { sel: '#intensityToggle .intensity-btn[data-intensity="light"] .intensity-name',
-        en: 'Light',    es: 'Ligero',    textOnly: true },
-    { sel: '#intensityBadge',
-        en: 'Recommended', es: 'Recomendado', textOnly: true },
-    { sel: '#intensityToggle .intensity-btn[data-intensity="balanced"] .intensity-name',
-        en: 'Balanced', es: 'Balanceado', textOnly: true },
-    { sel: '#intensityToggle .intensity-btn[data-intensity="strong"] .intensity-name',
-        en: 'Strong',   es: 'Fuerte',    textOnly: true },
+    { labelFor: 's_black_level', en: 'Black level ', es: 'Nivel de negros ', textOnly: true },
+    { labelFor: 's_white_level', en: 'White level ', es: 'Nivel de blancos ', textOnly: true },
     { sel: '#card-garment .advanced-only .section-title', en: 'Separation mode', es: 'Modo de separación' },
     { sel: '.mode-btn[data-mode="luminance"] > span:first-child', en: 'By luminance', es: 'Por luminancia' },
     { sel: '.mode-btn[data-mode="luminance"] .mode-tag', en: 'black garment', es: 'prenda negra' },
     { sel: '.mode-btn[data-mode="color"] > span:first-child', en: 'By color', es: 'Por color' },
     { sel: '.mode-btn[data-mode="color"] .mode-tag', en: 'colored garment', es: 'prenda de color' },
+    { sel: '.mode-btn[data-mode="alpha"] > span:first-child', en: 'Transparency / Neon', es: 'Transparencia / Neón' },
+    { sel: '.mode-btn[data-mode="alpha"] .mode-tag', en: 'soft alpha PNG', es: 'PNG con alfa suave' },
     { labelFor: 'gamma',         en: 'Gamma ', es: 'Gamma ', textOnly: true },
     { labelFor: 'black_cut',     en: 'Black cut ', es: 'Corte de negros ', textOnly: true },
     { labelFor: 'white_cut',     en: 'White cut ', es: 'Corte de blancos ', textOnly: true },
@@ -4905,7 +4999,7 @@ body[data-ux="advanced"] .simple-only{display:none !important}
     { sel: '#card-screen > h2', en: 'Halftone / Print', es: 'Semitono / Impresión' },
     { labelFor: 'lpi',        en: 'Screen ruling (LPI) ', es: 'Lineatura (LPI) ', textOnly: true },
     { labelFor: 'angle',      en: 'Angle ', es: 'Ángulo ', textOnly: true },
-    { labelFor: 'min_dot_mm', en: 'Minimum dot (mm) ', es: 'Punto mínimo (mm) ', textOnly: true },
+    { labelFor: 'min_dot_mm', en: 'Minimum dot diameter (mm) ', es: 'Diámetro mínimo del punto (mm) ', textOnly: true },
     { sel: '#min_dot_warn', en: '⚠ Below the DTF production floor (~0.15 mm). Dots this small may not transfer on standard printers.',
                             es: '⚠ Por debajo del mínimo de producción DTF (~0.15 mm). Puntos tan pequeños pueden no transferirse en impresoras estándar.' },
     { labelFor: 'soft_edges', childSel: 'span', en: 'Anti-alias on dot edges', es: 'Anti-alias en los bordes' },
@@ -5180,7 +5274,7 @@ body[data-ux="advanced"] .simple-only{display:none !important}
     if (btnP1) btnP1.classList.toggle('dirty', !!on);
   }
   // Hook into every slider/input that triggers scheduleProcess.
-  ['s_remove','s_spread','color_tol','color_feather','color_chroma','gamma',
+  ['s_remove','s_spread','s_black_level','s_white_level','color_tol','color_feather','color_chroma','gamma',
    'black_cut','white_cut','brightness','contrast','sharpness','lpi',
    'angle','min_dot_mm','garment_picker','garment_hex'].forEach((id) => {
     const el = $(id); if (!el) return;
