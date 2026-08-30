@@ -2099,16 +2099,6 @@ body[data-ux="advanced"] .simple-only{display:none !important}
   const FAST_MODE_CAP = 1200;   // largo máximo en px al usar "calidad rápida"
 
   const $ = (id) => document.getElementById(id);
-  const BUILDER_EMBED = new URLSearchParams(location.search).get('embed') === 'builder';
-  let builderParentOrigin = null;
-  function isAllowedBuilderOrigin(origin){
-    try{
-      const u = new URL(origin);
-      return u.hostname === 'bixprint.mx' || u.hostname.endsWith('.bixprint.mx') ||
-             u.hostname === 'manuelsmxjna-crypto.github.io' ||
-             u.hostname === 'localhost' || u.hostname === '127.0.0.1';
-    }catch(_){ return false; }
-  }
 
   // ==================================================================
   //   WEB WORKER — keeps the UI lag-free during heavy pixel work
@@ -3067,22 +3057,6 @@ body[data-ux="advanced"] .simple-only{display:none !important}
     $('dropzone').classList.remove('error','dragover');
     $('dropzone').classList.add('loading');
     loadAndInspect(file);
-  }
-
-  // Embedded Builder bridge. The parent sends the selected source image as
-  // a Blob; Halftone returns the finished 300-DPI PNG without exposing any
-  // cloud credentials or storage URLs.
-  window.addEventListener('message', (event) => {
-    if (!BUILDER_EMBED || !isAllowedBuilderOrigin(event.origin)) return;
-    const msg = event.data || {};
-    if (msg.type !== 'BIX_HALFTONE_SOURCE' || !(msg.blob instanceof Blob)) return;
-    builderParentOrigin = event.origin;
-    const file = new File([msg.blob], msg.name || 'builder-design.png', { type:msg.blob.type || 'image/png' });
-    handleNewFile(file);
-  });
-  if (BUILDER_EMBED){
-    document.body.classList.add('builder-embed');
-    window.parent.postMessage({ type:'BIX_HALFTONE_READY' }, '*');
   }
 
   // Helper: pinta el overlay de error en la dropzone con un mensaje.
@@ -4220,38 +4194,22 @@ body[data-ux="advanced"] .simple-only{display:none !important}
       const buf = await blob.arrayBuffer();
       const withDpi = injectDpiIntoPng(new Uint8Array(buf), S.lastResult.dpi);
       const finalBlob = new Blob([withDpi], { type: 'image/png' });
+      const url = URL.createObjectURL(finalBlob);
+      const a = document.createElement('a');
       const tag = $('halftone_enabled').checked ? 'halftone' : 'adjusted';
-      const filename = `${S.fileName}_${tag}.png`;
-      if (BUILDER_EMBED && builderParentOrigin){
-        window.parent.postMessage({
-          type:'BIX_HALFTONE_RESULT', blob:finalBlob, name:filename,
-          width:S.lastResult.w, height:S.lastResult.h, dpi:S.lastResult.dpi,
-          settings:{ mode:S.intensity, separationMode:S.separationMode,
-            lpi:parseFloat($('lpi').value), angle:parseFloat($('angle').value) }
-        }, builderParentOrigin);
-        setStatus(T('Saved to the Builder halftone library.', 'Guardado en la biblioteca de semitonos del Builder.'));
-      } else {
-        const url = URL.createObjectURL(finalBlob);
-        const a = document.createElement('a');
-        a.href = url; a.download = filename;
-        document.body.appendChild(a); a.click(); a.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 1500);
-        setStatus(T(`PNG generated (${(finalBlob.size/1024).toFixed(0)} KB) · ${S.lastResult.w}×${S.lastResult.h}px · DPI ${Math.round(S.lastResult.dpi)}.`,
-                    `PNG generado (${(finalBlob.size/1024).toFixed(0)} KB) · ${S.lastResult.w}×${S.lastResult.h}px · DPI ${Math.round(S.lastResult.dpi)}.`));
-      }
+      a.href = url;
+      a.download = `${S.fileName}_${tag}.png`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+      setStatus(T(`PNG generated (${(finalBlob.size/1024).toFixed(0)} KB) · ${S.lastResult.w}×${S.lastResult.h}px · DPI ${Math.round(S.lastResult.dpi)}.`,
+                  `PNG generado (${(finalBlob.size/1024).toFixed(0)} KB) · ${S.lastResult.w}×${S.lastResult.h}px · DPI ${Math.round(S.lastResult.dpi)}.`));
     } catch(err){
       console.error(err);
       setStatus(T('Error generating PNG: ', 'Error al generar PNG: ') + err.message, 'err');
     }
   });
 
-  function enableDownload(){
-    $('download').style.display = 'block';
-    if (BUILDER_EMBED){
-      const button = $('download').querySelector('button');
-      if (button) button.textContent = 'Guardar en Semitonos';
-    }
-  }
+  function enableDownload(){ $('download').style.display = 'block'; }
 
   function injectDpiIntoPng(u8, dpi){
     const ppm = Math.round(dpi / 0.0254);

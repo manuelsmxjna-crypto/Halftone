@@ -7,8 +7,6 @@ Herramienta web 100 % en el navegador para preparar arte de impresión DTF / ser
 
 **Sin backend, sin instalación.** Funciona en GitHub Pages o abriendo `index.html` directamente.
 
-Cuando se abre con `?embed=builder`, recibe el diseño seleccionado mediante `postMessage` y sustituye la descarga por **Guardar en Semitonos**, devolviendo el PNG final al Builder sin exponer credenciales.
-
 ## Características
 
 - **Preparación previa**: detecta el tamaño en cm y el DPI embebido del archivo subido (lee chunk `pHYs` de PNG y segmentos JFIF/EXIF de JPEG), y permite redimensionar al tamaño físico exacto de impresión.
