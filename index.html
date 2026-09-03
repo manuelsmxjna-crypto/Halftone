@@ -1461,42 +1461,6 @@ body[data-ux="advanced"] .simple-only{display:none !important}
 }
 .dz-sample:hover{ color:var(--cyan); text-decoration-color:var(--cyan) }
 
-/* ==================================================================
-   BEFORE / AFTER WIPE (Result tab)
-   ==================================================================
-   When .wipe is on the viewer, a vertical handle splits the canvas
-   so the left half shows the original (#before) and the right half
-   shows the processed result (#result). The split position is
-   controlled by --wipe (0..1, default .5).
-   We do this purely with CSS clip-path on #before so there's zero
-   re-render cost per drag frame. */
-.viewer.wipe{ cursor:ew-resize }
-.viewer.wipe.has-image #before{
-  display:block !important;
-  clip-path: polygon(0 0, calc(var(--wipe,.5) * 100%) 0, calc(var(--wipe,.5) * 100%) 100%, 0 100%);
-}
-.viewer.wipe .wipe-handle{ display:flex }
-.wipe-handle{
-  position:absolute; top:0; bottom:0;
-  left:calc(var(--wipe,.5) * 100%);
-  width:0; z-index:7; display:none;
-  align-items:center; justify-content:center;
-  pointer-events:none;
-}
-.wipe-handle::before{
-  content:""; position:absolute; top:0; bottom:0;
-  left:-1px; width:2px; background:var(--cyan);
-  box-shadow:0 0 10px rgba(34,224,211,.6);
-}
-.wipe-handle::after{
-  content:"◀ ▶"; position:absolute;
-  background:rgba(15,15,22,.92); color:var(--cyan);
-  font-size:9px; font-weight:700; letter-spacing:1px;
-  padding:5px 8px; border-radius:999px;
-  border:1px solid var(--cyan);
-  white-space:nowrap;
-}
-
 /* Tooltip-on-tap support: when JS adds .show-tip the same tooltip
    appears via :hover-equivalent rules. Mobile users don't have hover. */
 .help.show-tip::before,
@@ -2252,10 +2216,6 @@ html[data-theme="dark"] .btn.is-working{background:linear-gradient(110deg,#087f7
         <button id="vt_fit" title="Fit to view (0)">⤧</button>
         <button id="vt_100" title="Actual size 100% (1)">1:1</button>
         <div class="sep"></div>
-        <button id="vt_wipe" title="Before / after compare (W)" aria-pressed="false">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
-        </button>
-        <div class="sep"></div>
         <div class="bg-selector" role="group" aria-label="Preview background">
           <button class="bg-opt active" data-bg="checker" title="Transparency (checkerboard) — shortcut C">
             <span class="bg-icon bg-icon-checker"></span>
@@ -2272,9 +2232,6 @@ html[data-theme="dark"] .btn.is-working{background:linear-gradient(110deg,#087f7
         <span class="lg-chip"><span class="lg-sw" style="background:#ffa032"></span>Halftone</span>
         <span class="lg-chip"><span class="lg-sw" style="background:#46c878"></span>Solid ink</span>
       </div>
-
-      <!-- Before/After wipe handle (only visible when .wipe is on the viewer) -->
-      <div class="wipe-handle" aria-hidden="true"></div>
 
       <div class="viewer-hud" id="vt_hud">—</div>
       <div class="viewer-busy" id="vt_busy">Processing</div>
@@ -5440,7 +5397,6 @@ html[data-theme="dark"] .btn.is-working{background:linear-gradient(110deg,#087f7
                                    es: '🎯 Haz clic en la imagen para elegir el color de prenda (Esc para cancelar)' },
     { sel: '.viewer .placeholder', en: 'Upload or drag an image to start',
                                    es: 'Sube o arrastra una imagen para empezar' },
-    { sel: '#vt_wipe', attr: 'title', en: 'Before / after compare (W)', es: 'Comparar antes / después (W)' },
     { sel: '#vt_zoom_out', attr: 'title', en: 'Zoom out (-)', es: 'Alejar (-)' },
     { sel: '#vt_zoom_in',  attr: 'title', en: 'Zoom in (+)', es: 'Acercar (+)' },
     { sel: '#vt_fit',  attr: 'title', en: 'Fit to view (0)', es: 'Ajustar (0)' },
@@ -5650,8 +5606,7 @@ html[data-theme="dark"] .btn.is-working{background:linear-gradient(110deg,#087f7
   }
 
   // ==================================================================
-  //   UX ENHANCEMENTS — sticky CTA, status strip, sliders, sample,
-  //   before/after wipe.
+  //   UX ENHANCEMENTS — sticky CTA, status strip, sliders and sample.
   //
   //   All wiring lives here so the heavy code above stays untouched.
   //   These observers/mirrors are purely additive — they listen to
@@ -5842,73 +5797,6 @@ html[data-theme="dark"] .btn.is-working{background:linear-gradient(110deg,#087f7
       catch(err){ console.error(err); }
     });
   }
-
-  // -------- Before / After wipe --------
-  const viewerEl = $('viewer');
-  const wipeBtn  = $('vt_wipe');
-  function setWipe(on){
-    viewerEl.classList.toggle('wipe', !!on);
-    if (wipeBtn){
-      wipeBtn.classList.toggle('active', !!on);
-      wipeBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
-    }
-    if (on) viewerEl.style.setProperty('--wipe', '0.5');
-  }
-  if (wipeBtn){
-    wipeBtn.addEventListener('click', () => {
-      // Only meaningful in the Result tab.
-      if (S.viewMode && S.viewMode !== 'result'){
-        // Snap back to Result view first.
-        const r = document.querySelector('#viewTabs .vtab[data-view="result"]');
-        if (r) r.click();
-      }
-      setWipe(!viewerEl.classList.contains('wipe'));
-    });
-  }
-  // Drag to move the wipe split. Pointer events bubble up from the
-  // stage; we listen on the viewer so the cursor stays "ew-resize"
-  // anywhere over the canvas.
-  let wipeDragging = false;
-  function updateWipeFromEvent(ev){
-    const rect = viewerEl.getBoundingClientRect();
-    const x = (ev.clientX - rect.left) / rect.width;
-    viewerEl.style.setProperty('--wipe', Math.max(0, Math.min(1, x)).toFixed(4));
-  }
-  viewerEl.addEventListener('pointerdown', (ev) => {
-    if (!viewerEl.classList.contains('wipe')) return;
-    // Don't fight the eyedropper or toolbar.
-    if (viewerEl.classList.contains('picking')) return;
-    if (ev.target.closest('.viewer-toolbar')) return;
-    wipeDragging = true;
-    viewerEl.setPointerCapture(ev.pointerId);
-    updateWipeFromEvent(ev);
-    ev.preventDefault(); ev.stopPropagation();
-  }, true);
-  viewerEl.addEventListener('pointermove', (ev) => {
-    if (!wipeDragging) return;
-    updateWipeFromEvent(ev);
-  });
-  // Only end on pointerup/cancel — NOT pointerleave (pointer capture
-   // keeps events flowing, and ending on leave caused drag to abort
-   // when the cursor briefly exited the viewer bounds).
-  ['pointerup','pointercancel'].forEach((evt) => {
-    viewerEl.addEventListener(evt, (ev) => {
-      if (wipeDragging){ wipeDragging = false; try { viewerEl.releasePointerCapture(ev.pointerId); } catch(_){} }
-    });
-  });
-  // Keyboard shortcut: "W" toggles wipe.
-  document.addEventListener('keydown', (ev) => {
-    if (ev.target && /^(INPUT|TEXTAREA|SELECT)$/.test(ev.target.tagName)) return;
-    if (ev.key === 'w' || ev.key === 'W'){
-      if (wipeBtn) wipeBtn.click();
-    }
-  });
-  // Disable wipe automatically when switching away from Result.
-  document.querySelectorAll('#viewTabs .vtab').forEach((tab) => {
-    tab.addEventListener('click', () => {
-      if (tab.dataset.view !== 'result') setWipe(false);
-    });
-  });
 
   // ==================================================================
   //   TAP-TO-SHOW TOOLTIPS (touch devices have no :hover)
