@@ -7,6 +7,28 @@
   // layout with the preview on the left. See the `html.embed` CSS rules.
   try { if (window.self !== window.top) document.documentElement.classList.add('embed'); }
   catch(_) { document.documentElement.classList.add('embed'); }
+  // Resolve the UI language before the page paints. A saved manual
+  // choice wins; otherwise only a primary device language beginning in
+  // "es" selects Spanish. Every other language falls back to English.
+  try {
+    const savedLang = localStorage.getItem('vk_lang');
+    const deviceLang = ((navigator.languages && navigator.languages[0]) || navigator.language || '').toLowerCase();
+    window.APP_INITIAL_LANG = (savedLang === 'es' || savedLang === 'en')
+      ? savedLang
+      : (deviceLang.startsWith('es') ? 'es' : 'en');
+  } catch(_) {
+    window.APP_INITIAL_LANG = ((navigator.language || '').toLowerCase().startsWith('es')) ? 'es' : 'en';
+  }
+  document.documentElement.lang = window.APP_INITIAL_LANG;
+  try {
+    const savedTheme = localStorage.getItem('vk_theme');
+    window.APP_INITIAL_THEME = (savedTheme === 'light' || savedTheme === 'dark')
+      ? savedTheme
+      : (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  } catch(_) {
+    window.APP_INITIAL_THEME = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  document.documentElement.dataset.theme = window.APP_INITIAL_THEME;
 </script>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -1492,10 +1514,206 @@ body[data-ux="advanced"] .simple-only{display:none !important}
   z-index:100;box-shadow:0 4px 12px rgba(0,0,0,.4);text-align:left;
   font-weight:400;letter-spacing:.2px;pointer-events:none;
 }
+/* ==================================================================
+   BIXSTUDIO BUILDER VISUAL PREVIEW
+   Skin-only concept. The processing engine and element IDs stay intact.
+   ================================================================== */
+:root{
+  --bg:#eef1f5;--card:#ffffff;--panel:#ffffff;--line:#dde2e9;
+  --border:#dde2e9;--text:#172033;--muted:#687386;--cyan:#2563eb;
+  --blue:#2563eb;--purple:#2563eb;--pink:#2563eb;--magenta:#2563eb;
+  --ok:#16a34a;--warn:#d97706;
+}
+html,body{background:#eef1f5;color:var(--text);font-family:Inter,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+body{padding:78px 18px 18px}
+.bix-topbar{
+  position:fixed;inset:0 0 auto 0;height:62px;z-index:1000;background:#fff;
+  border-bottom:1px solid #e4e7ec;display:flex;align-items:center;padding:0 16px;
+  box-shadow:0 1px 3px rgba(15,23,42,.04)
+}
+.bix-brand{display:flex;align-items:center;gap:10px;min-width:245px}
+.bix-mark{width:34px;height:34px;border-radius:9px;background:#121a2b;color:#fff;display:grid;place-items:center;font-weight:800;font-size:17px}
+.bix-brand-copy{display:flex;flex-direction:column;line-height:1.1}.bix-brand-copy b{font-size:15px}.bix-brand-copy span{font-size:10px;color:#7b8493;margin-top:3px}
+.bix-top-title{font-weight:650;font-size:14px;padding-left:18px;border-left:1px solid #e5e7eb}
+.bix-top-actions{margin-left:auto;display:flex;align-items:center;gap:8px}
+.bix-pill{border:1px solid #dfe3e9;background:#fff;color:#354052;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:650}
+.bix-pill.primary{background:#2563eb;border-color:#2563eb;color:#fff;box-shadow:0 2px 5px rgba(37,99,235,.2)}
+.wrap{max-width:none;margin:0;height:100%;grid-template-columns:minmax(0,1fr) 390px;gap:16px}
+.wrap.has-image > .col-left{order:2}.wrap.has-image > .card{order:1}
+.wrap:not(.has-image){grid-template-columns:minmax(380px,560px);justify-content:center;max-width:none}
+.col-left{gap:12px;padding-right:7px;margin-right:-7px;scrollbar-color:#c8ced8 transparent}
+.col-left::-webkit-scrollbar-thumb{background:#c8ced8}
+.card{background:#fff;border:1px solid #dde2e9;border-radius:10px;padding:16px;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+.card h2{font-size:14px;color:#172033}.card h3{color:#2563eb}.card h3::before{background:#2563eb;box-shadow:none}
+.ux-mode-switch{background:#f1f4f8;border:1px solid #dfe4eb;border-radius:9px;box-shadow:0 6px 12px rgba(31,41,55,.08),0 0 0 6px #eef1f5}
+.ux-mode-btn{color:#677286;border-radius:6px}.ux-mode-btn:hover{background:#fff;color:#172033}.ux-mode-btn.active{background:#fff;color:#172033;box-shadow:0 1px 3px rgba(15,23,42,.12),inset 0 0 0 1px #d9dee6}.ux-mode-btn.active svg{color:#2563eb}
+.prefs-bar{background:#fff;border:1px solid #dde2e9;border-radius:10px;box-shadow:none;display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:10px 12px}
+.prefs-bar .pref-row{display:flex;align-items:center;gap:8px;min-width:0}.prefs-bar .pref-caption{font-size:10px;letter-spacing:.65px;white-space:nowrap}
+.pref-caption,label,small,.hint{color:#687386}.pref-select{min-width:0;width:100%;height:32px;padding:4px 28px 4px 9px!important;background:#f7f8fa!important;border:1px solid #dce2ea!important;border-radius:7px!important;color:#354052!important;font-size:11px!important;font-weight:650;cursor:pointer}
+input[type=number],input[type=text],input[type=file],select{background:#fff!important;color:#172033!important;border-color:#d8dee7!important}
+input[type=number]:focus,input[type=text]:focus,select:focus{border-color:#2563eb!important;box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+input[type=range]{background:linear-gradient(90deg,#d7dce5,#2563eb)}input[type=range]::-webkit-slider-thumb{border-color:#2563eb}input[type=range]::-moz-range-thumb{border-color:#2563eb}
+.info-box,.toggle.strong{background:#f7f8fa;border-color:#dfe3e9}.section-title{color:#7b8493}.section-title::before,.section-title::after{background:#dfe3e9}
+.btn{border-radius:8px}.btn.primary{background:#2563eb;color:#fff;box-shadow:0 3px 8px rgba(37,99,235,.22)}.btn.pink{background:#2563eb;color:#fff}.btn.outline{background:#fff;border-color:#d8dee7;color:#354052}.btn.outline:hover{background:#f7f8fa}.btn.outline.accent-cyan{border-color:#b8cdfb;color:#2563eb}.btn.outline.accent-cyan:hover{background:#eff5ff;border-color:#2563eb}
+.dropzone{background:#fafbfc!important;border-color:#cdd4df!important}.dropzone:hover{border-color:#2563eb!important;background:#f6f9ff!important}.dz-icon-wrap,.dz-link{color:#2563eb!important}.dz-formats span,.fc-pill{background:#eef2f7!important;color:#5f6b7d!important;border-color:#dde3eb!important}
+.file-card{background:#f8fafc!important;border-color:#dfe4eb!important}.fc-name{color:#172033!important}
+.flow-card{background:#fff!important;border-color:#dce2ea!important;color:#172033!important}.flow-card:hover,.flow-card.accent-pink:hover{border-color:#2563eb!important;box-shadow:0 5px 14px rgba(37,99,235,.12)!important}.flow-card.accent-pink{border-color:#bcd0fb!important}
+.flow-choice-grid{gap:12px}
+/* The next-step actions use two strong, distinct surfaces instead of a
+   neon glow. This keeps them visible on the light Builder theme. */
+.flow-card,.flow-card.accent-pink{
+  min-height:156px;padding:17px 44px 18px 17px!important;border:0!important;
+  overflow:hidden;color:#fff!important;box-shadow:0 5px 13px rgba(15,23,42,.16)!important;
+}
+.flow-card{background:linear-gradient(145deg,#2563eb,#1747b7)!important}
+.flow-card.accent-pink{background:linear-gradient(145deg,#172033,#0d1422)!important}
+.flow-card::before{
+  content:"";position:absolute;inset:auto -26px -38px auto;width:120px;height:120px;
+  border:18px solid rgba(255,255,255,.08);border-radius:50%;pointer-events:none;
+  transition:transform .25s ease;
+}
+.flow-card::after,.flow-card.accent-pink::after{color:#fff!important;background:rgba(255,255,255,.16);width:28px;height:28px;border-radius:50%;display:grid;place-items:center;right:14px}
+.flow-card:hover,.flow-card.accent-pink:hover{transform:translateY(-2px);border:0!important;box-shadow:0 9px 20px rgba(15,23,42,.23)!important}
+.flow-card:hover::before{transform:scale(1.12)}
+.flow-card .flow-icon,.flow-card.accent-pink .flow-icon{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.24);color:#fff;box-shadow:none}
+.flow-card .flow-title,.flow-card.accent-pink .flow-title{color:#fff;font-size:14px}
+.flow-card .flow-desc,.flow-card.accent-pink .flow-desc{color:rgba(255,255,255,.78)}
+.flow-card.next-step-glow,.flow-card.next-step-glow.accent-pink{animation:choiceNudge 3.8s ease-in-out infinite}
+.flow-card.next-step-glow::before,.flow-card.next-step-glow.accent-pink::before{animation:none}
+.flow-tag{position:absolute;right:12px;top:11px;padding:4px 7px;border-radius:999px;background:rgba(255,255,255,.16);color:#fff;font-size:9px;font-weight:800;letter-spacing:.65px;text-transform:uppercase}
+@keyframes choiceNudge{0%,72%,100%{transform:translateY(0)}78%{transform:translateY(-3px)}84%{transform:translateY(0)}90%{transform:translateY(-2px)}}
+.wrap.has-image:not(.flow-ready) .action-bar{display:none}
+.btn.primary.dirty{background:#d97706!important;color:#fff!important;box-shadow:0 4px 13px rgba(217,119,6,.3)!important}
+/* Clear in-progress feedback for long processing/export operations. */
+.btn.is-working{
+  position:relative;overflow:hidden;cursor:wait!important;color:#fff!important;
+  background:linear-gradient(110deg,#1747b7 0%,#2f70ef 42%,#1747b7 76%)!important;
+  background-size:220% 100%!important;animation:workingSweep 1.15s linear infinite!important;
+  opacity:1!important;box-shadow:0 4px 14px rgba(37,99,235,.3)!important;
+}
+.btn.is-working::before{
+  content:"";width:15px;height:15px;border:2px solid rgba(255,255,255,.38);
+  border-top-color:#fff;border-radius:50%;animation:workingSpin .65s linear infinite;
+}
+@keyframes workingSweep{to{background-position:-220% 0}}
+@keyframes workingSpin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.btn.is-working{animation:none!important}.btn.is-working::before{animation-duration:1.3s}}
+.prominent-heading{
+  margin:16px 0 9px!important;font-size:11px!important;letter-spacing:1.35px!important;
+  line-height:1.3;text-transform:uppercase;color:#2563eb!important;font-weight:800!important;
+  display:flex!important;align-items:center;gap:8px;
+}
+.prominent-heading::before{content:""!important;flex:0 0 6px!important;width:6px!important;height:6px!important;border:0!important;border-radius:50%!important;background:#2563eb!important;box-shadow:none!important}
+.prominent-heading::after{display:none!important}
+.viewer{background:#e7ebf0;border-color:#d8dee7}.viewer-toolbar{background:#fff;color:#344054;border:1px solid #dfe4eb;box-shadow:0 4px 12px rgba(15,23,42,.12)}.viewer-toolbar button{color:#475467}.viewer-toolbar button:hover{background:#f1f4f8}.viewer-toolbar button.active{background:#eaf1ff;color:#2563eb}.viewer-hud,.viewer-busy{background:#fff;color:#475467;border-color:#dfe4eb;box-shadow:0 2px 7px rgba(15,23,42,.12)}
+.viewer-toolbar .bg-selector{background:#eef2f7;border:1px solid #dce2ea}.viewer-toolbar .bg-opt.active{background:#dbe8ff}.viewer-toolbar .bg-opt.active .bg-icon{box-shadow:0 0 0 2px #2563eb}
+.status-strip{background:#fff!important;border-color:#dfe4eb!important;color:#687386!important}
+.g-type{background:#fff;color:#344054;border-color:#dce2ea}.g-type:hover{border-color:#9dbcf8;background:#f8faff}.g-type.active{border-color:#2563eb;background:#eff5ff;box-shadow:0 0 0 1px rgba(37,99,235,.2)}
+.help:hover{color:#2563eb;border-color:#2563eb}.help:hover::after{background:#172033;color:#fff;border-color:#172033}
+@media(max-width:760px){
+  body{padding:68px 8px 104px;background:#eef1f5}
+  .bix-topbar{height:58px;padding:0 10px}.bix-mark{width:32px;height:32px}.bix-brand-copy span{display:none}
+  .bix-top-title{display:none}.bix-brand{min-width:0}.bix-top-actions{gap:5px}.bix-pill:not(.primary){display:none}.bix-pill.primary{padding:9px 11px;font-size:11px}
+  .wrap,.wrap.has-image,html.embed .wrap.has-image{grid-template-columns:1fr;grid-template-areas:none;gap:9px}
+  /* On phones the two global settings become the first row, followed by
+     the preview and then the task cards. display:contents lets those two
+     controls participate in the parent grid without duplicating markup. */
+  .col-left{display:contents}
+  .col-left>*{order:4}.col-left>.ux-mode-switch{order:1}.col-left>.prefs-bar{order:2}
+  .wrap>.card,.wrap.has-image>.card,.wrap:not(.has-image)>.card,html.embed .wrap.has-image>.card{grid-area:auto;order:3}
+  .wrap.has-image>.card{height:38vh;min-height:245px;max-height:360px;aspect-ratio:auto;border-radius:9px;padding:9px;box-shadow:0 2px 8px rgba(15,23,42,.1)}
+  .wrap:not(.has-image)>.col-left{width:100%}.col-left{gap:9px;padding:0;margin:0}
+  .ux-mode-switch{margin-bottom:8px;box-shadow:0 2px 7px rgba(15,23,42,.08),0 0 0 4px #eef1f5}.ux-mode-btn{min-height:42px;padding:9px}
+  .prefs-bar{grid-template-columns:1fr 1fr;padding:7px 8px;margin-bottom:8px;gap:7px}.prefs-bar .pref-caption{display:none}.pref-select{height:38px;font-size:11px!important;padding-left:8px!important}
+  .card{padding:12px;border-radius:9px}.card h2{font-size:13px}
+  .dropzone{padding:22px 12px}.file-card{grid-template-columns:50px minmax(0,1fr);padding:8px}.fc-actions{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr 40px;gap:6px}.fc-actions .btn{width:100%;margin:0}
+  .flow-choice-grid{grid-template-columns:1fr 1fr;gap:8px}
+  .flow-card,.flow-card.accent-pink{min-height:0;aspect-ratio:1.08/1;padding:12px 10px 10px!important;justify-content:flex-end}
+  .flow-card::after,.flow-card.accent-pink::after{right:9px;bottom:9px;top:auto;transform:none;width:24px;height:24px;font-size:15px}
+  .flow-card:hover::after{transform:translateX(2px)}
+  .flow-card .flow-icon,.flow-card.accent-pink .flow-icon{position:absolute;left:10px;top:10px;width:31px;height:31px;font-size:17px;margin:0}
+  .flow-card .flow-title,.flow-card.accent-pink .flow-title{font-size:16px;line-height:1.16;font-weight:800;letter-spacing:-.2px;padding-right:20px}
+  .flow-card .flow-desc,.flow-card.accent-pink .flow-desc{font-size:9.5px;line-height:1.3;padding-right:19px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+  .flow-tag{top:10px;right:8px;max-width:calc(100% - 52px);font-size:7.5px;padding:3px 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .viewer-toolbar{top:5px;right:5px}.view-tabs{margin-bottom:6px}.status-strip{font-size:10px!important}
+  .viewer-toolbar .bg-selector{display:flex}
+  .wrap.has-image .action-bar{background:#fff;border-top:1px solid #dce2ea;box-shadow:0 -5px 18px rgba(15,23,42,.13);padding:8px 10px max(8px,env(safe-area-inset-bottom));gap:6px}.action-bar .btn{min-height:44px;border-radius:8px}
+}
+.theme-toggle{width:38px;height:34px;padding:0;display:grid;place-items:center;cursor:pointer}
+.theme-icon{width:17px;height:17px;position:relative;display:block}
+.theme-icon::before{content:"☀";position:absolute;inset:0;display:grid;place-items:center;font-size:17px;line-height:1}
+html[data-theme="dark"] .theme-icon::before{content:"☾";font-size:20px;transform:translateY(-1px)}
+
+/* Dark mode keeps the new layout and component hierarchy, changing only
+   its skin to the cyan/magenta palette of the original application. */
+html[data-theme="dark"]{
+  --bg:#0e0e12;--card:#181822;--panel:#1f1f2c;--line:#2a2a38;
+  --border:#2a2a38;--text:#ececf2;--muted:#8b8b9c;--cyan:#22e0d3;
+  --blue:#22e0d3;--purple:#3b82f6;--pink:#ec2891;--magenta:#ec2891;
+  --ok:#22c55e;--warn:#ffbd55;
+}
+html[data-theme="dark"],html[data-theme="dark"] body{background:radial-gradient(1100px 650px at 85% -5%,#1a1338 0%,#0e0e12 62%) fixed;color:var(--text)}
+html[data-theme="dark"] .bix-topbar{background:#15151e;border-color:#292938;box-shadow:0 1px 0 rgba(255,255,255,.02)}
+html[data-theme="dark"] .bix-mark{background:#22e0d3;color:#071413}
+html[data-theme="dark"] .bix-brand-copy span{color:#8b8b9c}
+html[data-theme="dark"] .bix-top-title{border-color:#30303f;color:#ececf2}
+html[data-theme="dark"] .bix-pill{background:#20202b;border-color:#343445;color:#ececf2}
+html[data-theme="dark"] .bix-pill.primary{background:linear-gradient(135deg,#22e0d3,#0ca99b);border-color:#22e0d3;color:#001513;box-shadow:0 3px 10px rgba(34,224,211,.22)}
+html[data-theme="dark"] .card,html[data-theme="dark"] .prefs-bar{background:#181822;border-color:#2a2a38;box-shadow:0 1px 2px rgba(0,0,0,.25)}
+html[data-theme="dark"] .card h2{color:#ececf2}
+html[data-theme="dark"] label,html[data-theme="dark"] small,html[data-theme="dark"] .hint,html[data-theme="dark"] .pref-caption{color:#9a9aac}
+html[data-theme="dark"] .card h3,html[data-theme="dark"] .prominent-heading{color:#22e0d3!important}
+html[data-theme="dark"] .card h3::before,html[data-theme="dark"] .prominent-heading::before{background:#22e0d3!important;box-shadow:0 0 6px rgba(34,224,211,.55)!important}
+html[data-theme="dark"] .ux-mode-switch{background:#1f1f2c;border-color:#303041;box-shadow:0 6px 14px rgba(0,0,0,.5),0 0 0 6px #0e0e12}
+html[data-theme="dark"] .ux-mode-btn{color:#9292a4}
+html[data-theme="dark"] .ux-mode-btn:hover{background:#282836;color:#ececf2}
+html[data-theme="dark"] .ux-mode-btn.active{background:#262635;color:#ececf2;box-shadow:inset 0 0 0 1px #22e0d3,0 2px 5px rgba(0,0,0,.3)}
+html[data-theme="dark"] .ux-mode-btn.active svg{color:#22e0d3}
+html[data-theme="dark"] .pref-select,html[data-theme="dark"] input[type=number],html[data-theme="dark"] input[type=text],html[data-theme="dark"] input[type=file],html[data-theme="dark"] select{background:#101019!important;color:#ececf2!important;border-color:#303041!important}
+html[data-theme="dark"] input[type=number]:focus,html[data-theme="dark"] input[type=text]:focus,html[data-theme="dark"] select:focus{border-color:#22e0d3!important;box-shadow:0 0 0 3px rgba(34,224,211,.11)}
+html[data-theme="dark"] input[type=range]{background:linear-gradient(90deg,#303041,#22e0d3)}
+html[data-theme="dark"] input[type=range]::-webkit-slider-thumb{border-color:#22e0d3}
+html[data-theme="dark"] .info-box,html[data-theme="dark"] .toggle.strong{background:#101019;border-color:#2a2a38}
+html[data-theme="dark"] .section-title{color:#9292a4}html[data-theme="dark"] .section-title::before,html[data-theme="dark"] .section-title::after{background:#303041}
+html[data-theme="dark"] .btn.primary{background:linear-gradient(135deg,#22e0d3,#0ca99b);color:#001513;box-shadow:0 4px 13px rgba(34,224,211,.24)}
+html[data-theme="dark"] .btn.pink{background:linear-gradient(135deg,#ec2891,#c41e7f);color:#fff}
+html[data-theme="dark"] .btn.outline{background:transparent;border-color:#343445;color:#ececf2}
+html[data-theme="dark"] .btn.outline:hover{background:rgba(255,255,255,.05)}
+html[data-theme="dark"] .btn.outline.accent-cyan{border-color:rgba(34,224,211,.5);color:#22e0d3}
+html[data-theme="dark"] .dropzone{background:#11111a!important;border-color:#343445!important}
+html[data-theme="dark"] .dropzone:hover{background:#151b23!important;border-color:#22e0d3!important}
+html[data-theme="dark"] .dz-icon-wrap,html[data-theme="dark"] .dz-link{color:#22e0d3!important}
+html[data-theme="dark"] .dz-formats span,html[data-theme="dark"] .fc-pill{background:#252533!important;color:#aaaabc!important;border-color:#353546!important}
+html[data-theme="dark"] .file-card{background:#11111a!important;border-color:#303041!important}html[data-theme="dark"] .fc-name{color:#ececf2!important}
+html[data-theme="dark"] .flow-card{background:linear-gradient(145deg,#0fbfaf,#087f76)!important}
+html[data-theme="dark"] .flow-card.accent-pink{background:linear-gradient(145deg,#ec2891,#9e175f)!important}
+html[data-theme="dark"] .viewer{background:#0b0b10;border-color:#2a2a38}
+html[data-theme="dark"] .viewer-toolbar,html[data-theme="dark"] .viewer-hud,html[data-theme="dark"] .viewer-busy{background:#171720;color:#d8d8e2;border-color:#303041;box-shadow:0 4px 14px rgba(0,0,0,.5)}
+html[data-theme="dark"] .viewer-toolbar button{color:#c2c2cf}html[data-theme="dark"] .viewer-toolbar button:hover{background:#292936}html[data-theme="dark"] .viewer-toolbar button.active{background:rgba(34,224,211,.16);color:#22e0d3}
+html[data-theme="dark"] .viewer-toolbar .bg-selector{background:#0e0e14;border-color:#303041}html[data-theme="dark"] .viewer-toolbar .bg-opt.active{background:rgba(34,224,211,.18)}html[data-theme="dark"] .viewer-toolbar .bg-opt.active .bg-icon{box-shadow:0 0 0 2px #22e0d3}
+html[data-theme="dark"] .status-strip{background:#11111a!important;border-color:#2a2a38!important;color:#9b9bac!important}
+html[data-theme="dark"] .g-type{background:#11111a;color:#ececf2;border-color:#303041}html[data-theme="dark"] .g-type:hover{background:#20202c;border-color:rgba(34,224,211,.55)}html[data-theme="dark"] .g-type.active{background:rgba(34,224,211,.12);border-color:#22e0d3;box-shadow:0 0 0 1px rgba(34,224,211,.35)}
+html[data-theme="dark"] .help:hover{color:#22e0d3;border-color:#22e0d3}
+html[data-theme="dark"] .btn.primary.dirty{background:#d97706!important;color:#fff!important}
+html[data-theme="dark"] .btn.is-working{background:linear-gradient(110deg,#087f76 0%,#22e0d3 42%,#087f76 76%)!important;color:#001513!important}
+@media(max-width:760px){
+  .theme-toggle{display:grid!important;width:36px;height:36px;padding:0!important}
+  html[data-theme="dark"] body{background:#0e0e12}
+  html[data-theme="dark"] .ux-mode-switch{box-shadow:0 2px 8px rgba(0,0,0,.4),0 0 0 4px #0e0e12}
+  html[data-theme="dark"] .wrap.has-image .action-bar{background:#15151e;border-color:#303041;box-shadow:0 -6px 20px rgba(0,0,0,.5)}
+}
 </style>
 </head>
 <body data-ux="simple">
 
+<header class="bix-topbar" aria-label="Application header">
+  <div class="bix-brand"><span class="bix-mark">◉</span><span class="bix-brand-copy"><b id="app_generic_name">Herramienta de semitonos</b><span id="app_generic_subtitle">Preparación para impresión</span></span></div>
+  <div class="bix-top-title" id="app_generic_section">Procesamiento de imagen</div>
+  <div class="bix-top-actions">
+    <button class="bix-pill theme-toggle" id="themeToggle" type="button" aria-label="Cambiar tema" title="Cambiar tema"><span class="theme-icon" aria-hidden="true"></span></button>
+    <button class="bix-pill primary" id="header_upload" type="button" onclick="document.getElementById('file').click()">Subir diseño</button>
+  </div>
+</header>
 <div class="wrap">
 
   <div class="col-left">
@@ -1525,17 +1743,17 @@ body[data-ux="advanced"] .simple-only{display:none !important}
     <div class="prefs-bar attention" id="prefsBar">
       <div class="pref-row">
         <span class="pref-caption" id="cap_lang">Language</span>
-        <div class="lang-toggle" id="langToggle" role="group" aria-label="Language">
-          <button type="button" data-lang="en" class="active">EN</button>
-          <button type="button" data-lang="es">ES</button>
-        </div>
+        <select class="pref-select" id="langToggle" aria-label="Language">
+          <option value="en">English</option>
+          <option value="es">Español</option>
+        </select>
       </div>
       <div class="pref-row">
         <span class="pref-caption" id="cap_unit">Units</span>
-        <div class="lang-toggle unit-toggle" id="unitToggle" role="group" aria-label="Units">
-          <button type="button" data-unit="in" class="active">in</button>
-          <button type="button" data-unit="cm">cm</button>
-        </div>
+        <select class="pref-select" id="unitToggle" aria-label="Units">
+          <option value="in">Pulgadas (in)</option>
+          <option value="cm">Centímetros (cm)</option>
+        </select>
       </div>
     </div>
 
@@ -1663,11 +1881,13 @@ body[data-ux="advanced"] .simple-only{display:none !important}
           <h3 class="flow-step-title" id="flow_choose_title">¿Qué quieres hacer?</h3>
           <div class="flow-choice-grid">
             <button type="button" class="flow-card" id="flow-pick-upscale">
+              <span class="flow-tag" id="flow_tag_upscale">Recomendado</span>
               <div class="flow-icon">✨</div>
               <div class="flow-title" id="flow_pick_upscale_title">Mejorar con IA primero</div>
               <div class="flow-desc" id="flow_pick_upscale_desc">Recomendado si la imagen es chica o de baja resolución. Multiplica el detalle ×4 sin perder bordes.</div>
             </button>
             <button type="button" class="flow-card accent-pink" id="flow-pick-direct">
+              <span class="flow-tag" id="flow_tag_direct">Continuar directo</span>
               <div class="flow-icon">⚡</div>
               <div class="flow-title" id="flow_pick_direct_title">Saltar al semitono</div>
               <div class="flow-desc" id="flow_pick_direct_desc">La imagen ya tiene suficiente resolución para el tamaño físico que vas a imprimir.</div>
@@ -1819,7 +2039,7 @@ body[data-ux="advanced"] .simple-only{display:none !important}
       <h2>Your Garment</h2>
 
       <!-- Presets de tipo de prenda — visibles en SIMPLE y AVANZADO -->
-      <div class="section-title">Choose your garment</div>
+      <div class="section-title prominent-heading">Choose your garment</div>
       <div class="garment-type-grid" id="garmentTypeGrid">
         <button class="g-type active" data-preset="negra"  type="button"><span class="g-chip" style="background:#0a0a0a"></span>Black</button>
         <button class="g-type"        data-preset="blanca" type="button"><span class="g-chip" style="background:#ffffff"></span>White</button>
@@ -1859,7 +2079,7 @@ body[data-ux="advanced"] .simple-only{display:none !important}
            preset — see INTENSITIES in the JS below. Advanced mode still
            exposes the individual sliders for fine control. -->
       <div class="simple-only">
-        <label id="intensityLabel">Halftone strength <i class="help" data-tip="Preset combinations of removal + halftone width. Light preserves more of the design (subtle effect); Strong removes more of the garment color and produces a wider halftone band.">?</i></label>
+        <label class="prominent-heading" id="intensityLabel">Halftone strength <i class="help" data-tip="Preset combinations of removal + halftone width. Light preserves more of the design (subtle effect); Strong removes more of the garment color and produces a wider halftone band.">?</i></label>
         <div class="intensity-toggle" id="intensityToggle" role="tablist" aria-labelledby="intensityLabel">
           <button type="button" class="intensity-btn active"   data-intensity="light"    role="tab" aria-selected="true">
             <span class="intensity-badge" id="intensityBadge">Recommended</span>
@@ -2039,14 +2259,8 @@ body[data-ux="advanced"] .simple-only{display:none !important}
           <button class="bg-opt active" data-bg="checker" title="Transparency (checkerboard) — shortcut C">
             <span class="bg-icon bg-icon-checker"></span>
           </button>
-          <button class="bg-opt" data-bg="garment" title="Selected garment color">
+          <button class="bg-opt" data-bg="garment" title="Selected garment color" aria-label="Selected garment color">
             <span class="bg-icon bg-icon-garment"></span>
-          </button>
-          <button class="bg-opt" data-bg="black" title="Black (simulates dark garment)">
-            <span class="bg-icon" style="background:#000"></span>
-          </button>
-          <button class="bg-opt" data-bg="white" title="White (simulates light garment)">
-            <span class="bg-icon" style="background:#fff"></span>
           </button>
         </div>
       </div>
@@ -2257,6 +2471,8 @@ body[data-ux="advanced"] .simple-only{display:none !important}
     const showDone     = step === 'upscaled';
     const showPrep     = step === 'ready';
     const cardsEnabled = step === 'ready';
+    const wrapEl = document.querySelector('.wrap');
+    if (wrapEl) wrapEl.classList.toggle('flow-ready', cardsEnabled);
     ['flow-pick-upscale','flow-pick-direct'].forEach((id) => {
       const choice = $(id);
       if (choice) choice.classList.toggle('next-step-glow', showChoose);
@@ -2315,8 +2531,9 @@ body[data-ux="advanced"] .simple-only{display:none !important}
 
     setFlowStep('ready');
     if (typeof updateTargetInfo === 'function') updateTargetInfo();
-    setStatus(T('Generating first result...', 'Generando primer resultado...'), 'busy');
-    scheduleProcess(0);
+    markCtaDirty(false);
+    setStatus(T('Ready. Adjust the options and press Process design.',
+                'Listo. Ajusta las opciones y pulsa Procesar diseño.'));
   }
 
   // High-level "do an upscale on the current source". Replaces
@@ -3030,8 +3247,8 @@ body[data-ux="advanced"] .simple-only{display:none !important}
   $('btn-change').addEventListener('click', () => $('file').click());
   $('btn-reprocess').addEventListener('click', () => {
     if (!S.sourceCanvas){ setStatus(T('Upload an image first.', 'Primero sube una imagen.'), 'err'); return; }
-    setStatus(T('Reprocessing...', 'Reprocesando...'), 'busy');
-    scheduleProcess(0);
+    if (S.flowStep !== 'ready') return;
+    $('btn-process').click();
   });
   $('btn-remove').addEventListener('click', () => {
     if (!S.sourceCanvas) return;
@@ -3048,6 +3265,12 @@ body[data-ux="advanced"] .simple-only{display:none !important}
     S.fileSize = file.size || 0;
     S.fileName = S.fileFullName.replace(/\.[^.]+$/, '') || 'artwork';
     S.firstResult = true;
+    S.lastResult = null;
+    settingsRevision = 0;
+    lastProcessedRevision = -1;
+    try { markCtaDirty(false); } catch(_){}
+    const dlMain = $('download'); if (dlMain) dlMain.style.display = 'none';
+    const dlSticky = $('download-2'); if (dlSticky) dlSticky.style.display = 'none';
 
     // Si veníamos del estado "file-card" (cambio de imagen), volvemos a
     // mostrar la dropzone para que el spinner sea visible. La file-card
@@ -3071,6 +3294,8 @@ body[data-ux="advanced"] .simple-only{display:none !important}
   function resetUploadState(){
     S.sourceCanvas = null;
     S.lastResult = null;
+    settingsRevision = 0;
+    lastProcessedRevision = -1;
     S.fileFullName = '';
     S.fileSize = 0;
     S.fileHasAlpha = false;
@@ -3078,6 +3303,9 @@ body[data-ux="advanced"] .simple-only{display:none !important}
     S.originalSourceCanvas    = null;
     S.originalSourceDpi       = 72;
     S.originalSourceDpiKnown  = false;
+    try { markCtaDirty(false); } catch(_){}
+    const dlMain = $('download'); if (dlMain) dlMain.style.display = 'none';
+    const dlSticky = $('download-2'); if (dlSticky) dlSticky.style.display = 'none';
     $('fileCard').style.display = 'none';
     $('prep-block').style.display = 'none';
     $('dropzone').style.display = '';
@@ -3104,13 +3332,20 @@ body[data-ux="advanced"] .simple-only{display:none !important}
     try{
       const w = c.width|0, h = c.height|0;
       if (!w || !h) return { hasAlpha:false, transparent:0, partial:0, opaque:0, partialFraction:0 };
-      const step = Math.max(1, Math.floor(Math.max(w,h) / 256)); // muestreo barato
-      const ctx = c.getContext('2d');
-      const data = ctx.getImageData(0, 0, w, h).data;
+      // Read a small proxy instead of allocating another full-resolution
+      // 100+ MB ImageData just to classify transparency.
+      const scale = Math.min(1, 256 / Math.max(w, h));
+      const sw = Math.max(1, Math.round(w * scale));
+      const sh = Math.max(1, Math.round(h * scale));
+      const probe = document.createElement('canvas');
+      probe.width = sw; probe.height = sh;
+      const pctx = probe.getContext('2d', { willReadFrequently:true });
+      pctx.drawImage(c, 0, 0, sw, sh);
+      const data = pctx.getImageData(0, 0, sw, sh).data;
       let transparent = 0, partial = 0, opaque = 0;
-      for (let y = 0; y < h; y += step){
-        for (let x = 0; x < w; x += step){
-          const a = data[(y*w + x)*4 + 3];
+      for (let y = 0; y < sh; y++){
+        for (let x = 0; x < sw; x++){
+          const a = data[(y*sw + x)*4 + 3];
           if (a === 0) transparent++;
           else if (a === 255) opaque++;
           else partial++;
@@ -3176,6 +3411,33 @@ body[data-ux="advanced"] .simple-only{display:none !important}
     }
   }
 
+  // Show the uploaded artwork immediately, before the user chooses AI
+  // enhancement or direct halftone. This is only a visual confirmation:
+  // it does not run the separation/screening pipeline or unlock controls.
+  function paintUploadedPreview(c){
+    if (!c || !c.width || !c.height) return;
+    const resultCv = $('result');
+    const beforeCv = $('before');
+    [resultCv, beforeCv].forEach((cv) => {
+      cv.width = c.width;
+      cv.height = c.height;
+      const ctx = cv.getContext('2d');
+      ctx.clearRect(0, 0, c.width, c.height);
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(c, 0, 0);
+    });
+    S.viewMode = 'result';
+    const viewEl = $('viewer');
+    viewEl.classList.add('has-image');
+    viewEl.classList.remove('view-original','view-mask','view-zones');
+    document.querySelectorAll('.vtab').forEach((tab) => {
+      tab.classList.toggle('active', tab.dataset.view === 'result');
+    });
+    // Wait for the responsive layout to reveal and size the viewer.
+    requestAnimationFrame(() => requestAnimationFrame(() => fitToView()));
+  }
+
   async function loadAndInspect(file){
     setStatus(T('Analyzing image...', 'Analizando imagen...'), 'busy');
     try {
@@ -3192,7 +3454,7 @@ body[data-ux="advanced"] .simple-only{display:none !important}
       // Silently noops on images without an alpha channel.
       const autoTrim = $('auto_trim');
       if (autoTrim && autoTrim.checked){
-        const trimmed = trimTransparentBorders(c);
+        const trimmed = await trimTransparentBorders(c);
         if (trimmed && (trimmed.width !== c.width || trimmed.height !== c.height)){
           const savedPx = (c.width * c.height) - (trimmed.width * trimmed.height);
           console.log(`Auto-trim: ${c.width}x${c.height} → ${trimmed.width}x${trimmed.height} (saved ${savedPx} px)`);
@@ -3227,6 +3489,7 @@ body[data-ux="advanced"] .simple-only{display:none !important}
       $('fileCard').style.display = '';
       // Revelar la columna del preview ahora que hay imagen.
       document.querySelector('.wrap').classList.add('has-image');
+      paintUploadedPreview(c);
       // Stop drawing attention to the lang/unit pickers — the focus
       // should now be on the artwork and processing controls.
       const _pb = $('prefsBar'); if (_pb) _pb.classList.remove('attention');
@@ -3330,28 +3593,38 @@ body[data-ux="advanced"] .simple-only{display:none !important}
     return true;
   }
 
-  function trimTransparentBorders(srcCv, alphaThreshold = 8){
+  async function trimTransparentBorders(srcCv, alphaThreshold = 8){
     const w = srcCv.width, h = srcCv.height;
     if (!w || !h) return srcCv;
     const ctx = srcCv.getContext('2d', { willReadFrequently: true });
-    const data = ctx.getImageData(0, 0, w, h).data;
-
     let top = -1, bottom = -1, left = w, right = -1;
-    for (let y = 0; y < h; y++){
-      let rowHasInk = false;
-      const rowStart = y * w * 4;
-      for (let x = 0; x < w; x++){
-        const a = data[rowStart + x*4 + 3];
-        if (a > alphaThreshold){
-          rowHasInk = true;
-          if (x < left) left = x;
-          if (x > right) right = x;
+    const BLOCK_ROWS = 128;
+    for (let blockY = 0; blockY < h; blockY += BLOCK_ROWS){
+      const rows = Math.min(BLOCK_ROWS, h - blockY);
+      // Reading strips prevents a 27 MP upload from allocating a second
+      // full-size RGBA buffer merely to inspect its alpha boundary.
+      const data = ctx.getImageData(0, blockY, w, rows).data;
+      for (let localY = 0; localY < rows; localY++){
+        const y = blockY + localY;
+        let rowHasInk = false;
+        const rowStart = localY * w * 4;
+        for (let x = 0; x < w; x++){
+          const a = data[rowStart + x*4 + 3];
+          if (a > alphaThreshold){
+            rowHasInk = true;
+            if (x < left) left = x;
+            if (x > right) right = x;
+          }
+        }
+        if (rowHasInk){
+          if (top === -1) top = y;
+          bottom = y;
         }
       }
-      if (rowHasInk){
-        if (top === -1) top = y;
-        bottom = y;
-      }
+      // Large customer files can contain tens of millions of pixels.
+      // Yield periodically so mobile browsers do not appear frozen on
+      // the "Analyzing image" step.
+      if (blockY + rows < h) await allowUiPaint(1);
     }
 
     // Nothing to trim → either fully opaque image, or completely empty.
@@ -3534,6 +3807,18 @@ body[data-ux="advanced"] .simple-only{display:none !important}
   // ==================================================================
   //   Resize multi-step
   // ==================================================================
+  function allowUiPaint(frames = 1){
+    return new Promise((resolve) => {
+      let remaining = Math.max(1, frames | 0);
+      const tick = () => {
+        remaining--;
+        if (remaining <= 0) setTimeout(resolve, 0);
+        else requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    });
+  }
+
   function highQualityResize(src, newW, newH){
     if (newW === src.width && newH === src.height) return src;
     let cur = src;
@@ -3551,6 +3836,31 @@ body[data-ux="advanced"] .simple-only{display:none !important}
     const ctx = out.getContext('2d');
     ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(cur, 0, 0, newW, newH);
+    return out;
+  }
+
+  // Same resize path as above, but yields after every canvas pass. The
+  // pixels remain identical; the browser simply gets opportunities to
+  // paint the spinner and respond to touch/click events between steps.
+  async function highQualityResizeResponsive(src, newW, newH){
+    if (newW === src.width && newH === src.height) return src;
+    let cur = src;
+    while (cur.width / 2 >= newW && cur.height / 2 >= newH){
+      const half = document.createElement('canvas');
+      half.width = Math.max(newW, Math.floor(cur.width / 2));
+      half.height = Math.max(newH, Math.floor(cur.height / 2));
+      const ctx = half.getContext('2d');
+      ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(cur, 0, 0, half.width, half.height);
+      cur = half;
+      await allowUiPaint(1);
+    }
+    const out = document.createElement('canvas');
+    out.width = newW; out.height = newH;
+    const ctx = out.getContext('2d');
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(cur, 0, 0, newW, newH);
+    await allowUiPaint(1);
     return out;
   }
 
@@ -3891,7 +4201,13 @@ body[data-ux="advanced"] .simple-only{display:none !important}
   async function runProcess(forFinal=false){
     if (!S.sourceCanvas) return;
     const t0 = performance.now();
+    const paramsRevision = settingsRevision;
     const p = readParams(forFinal);
+
+    // Make sure the busy state is visibly painted before any canvas
+    // allocation/resizing starts. Two frames are intentional: the first
+    // applies layout/style and the second presents it to the screen.
+    await allowUiPaint(2);
 
     // Tamaño base destino
     let targetW = Math.max(1, Math.round(p.newWcm * p.targetDpi));
@@ -3908,7 +4224,7 @@ body[data-ux="advanced"] .simple-only{display:none !important}
     }
 
     // 1) Resize a tamaño de trabajo
-    const work = highQualityResize(S.sourceCanvas, targetW, targetH);
+    const work = await highQualityResizeResponsive(S.sourceCanvas, targetW, targetH);
     // Guardar referencia para el gotero (color leído desde el canvas tras resize
     // pero ANTES de ajustes tonales: así el usuario elige el color "real").
     S.workingCanvas = work;
@@ -3919,12 +4235,14 @@ body[data-ux="advanced"] .simple-only{display:none !important}
       beforeCv.width = work.width; beforeCv.height = work.height;
     }
     beforeCv.getContext('2d').drawImage(work, 0, 0);
+    await allowUiPaint(1);
 
     // 3) Pixeles + ajustes tonales y separación: TODO esto se hace en
     //    el Web Worker para no congelar la UI durante el procesamiento.
     //    El main thread solo orquesta y pinta el resultado al final.
     const wctx = work.getContext('2d');
     const imgData = wctx.getImageData(0, 0, work.width, work.height);
+    await allowUiPaint(1);
     const N = work.width * work.height;
 
     const workerParams = {
@@ -3978,8 +4296,13 @@ body[data-ux="advanced"] .simple-only{display:none !important}
       fastMode: p.fastMode,
       halftoneOn: p.halftoneOn,
     };
+    lastProcessedRevision = paramsRevision;
 
-    paintResultCanvas();
+    // Painting a full-resolution ImageData can itself be expensive. Yield
+    // once after the worker result arrives so the waiting state remains
+    // visibly alive right up to the final canvas update.
+    await allowUiPaint(1);
+    await paintResultCanvasResponsive();
     // Si la vista actual es Máscara o Zonas, repintarla con los nuevos datos
     if (S.viewMode === 'mask')  paintMaskCanvas();
     if (S.viewMode === 'zones') paintZonesCanvas();
@@ -4008,6 +4331,27 @@ body[data-ux="advanced"] .simple-only{display:none !important}
     ctx.putImageData(new ImageData(r.colorData, r.w, r.h), 0, 0);
   }
 
+  async function paintResultCanvasResponsive(){
+    const r = S.lastResult;
+    if (!r) return;
+    const result = $('result');
+    if (result.width !== r.w || result.height !== r.h){
+      result.width = r.w; result.height = r.h;
+    }
+    const ctx = result.getContext('2d');
+    ctx.clearRect(0, 0, r.w, r.h);
+    const imageData = new ImageData(r.colorData, r.w, r.h);
+    // putImageData is exact (important for alpha/halftone pixels) but a
+    // single full-size call can monopolize the main thread. Dirty-rect
+    // strips preserve every byte while yielding between ~2 MP chunks.
+    const stripH = Math.max(1, Math.floor(2000000 / Math.max(1, r.w)));
+    for (let y = 0; y < r.h; y += stripH){
+      const h = Math.min(stripH, r.h - y);
+      ctx.putImageData(imageData, 0, 0, 0, y, r.w, h);
+      if (y + h < r.h) await allowUiPaint(1);
+    }
+  }
+
   // ==================================================================
   //   Real-time
   // ==================================================================
@@ -4023,6 +4367,8 @@ body[data-ux="advanced"] .simple-only{display:none !important}
   });
 
   let debounceTimer = null;
+  let settingsRevision = 0;
+  let lastProcessedRevision = -1;
   // Serialized run queue:
   //   · `runChain` is the promise tail — every run appends to it so they
   //     execute strictly in order (and inside, only one is "in flight").
@@ -4037,15 +4383,21 @@ body[data-ux="advanced"] .simple-only{display:none !important}
 
   function scheduleProcess(delayMs){
     if (!S.sourceCanvas) return;
-    // Note: we intentionally do NOT reset S.halftoneActive here.
-    // Once the user has clicked "Process now", subsequent slider
-    // tweaks keep the halftone applied so they can fine-tune against
-    // the actual screened result instead of flipping back to the raw
-    // cleaned preview every time. halftoneActive only resets when a
-    // new image is loaded (resetUploadState / loadAndInspect).
-    const d = (delayMs == null) ? 180 : delayMs;
+    // Parameter changes are intentionally manual. Keep the current
+    // preview untouched and turn the CTA into "Reprocess" instead of
+    // silently launching another expensive render.
     clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => runOnce(false), d);
+    if (S.flowStep !== 'ready') return;
+    settingsRevision++;
+    if (S.lastResult){
+      markCtaDirty(true);
+      setStatus(T('Changes pending. Press Reprocess design to update the preview.',
+                  'Hay cambios pendientes. Pulsa Reprocesar diseño para actualizar la vista previa.'));
+    } else {
+      markCtaDirty(false);
+      setStatus(T('Ready. Press Process design to generate the halftone.',
+                  'Listo. Pulsa Procesar diseño para generar el semitono.'));
+    }
   }
 
   function runOnce(forFinal=false){
@@ -4056,7 +4408,6 @@ body[data-ux="advanced"] .simple-only{display:none !important}
       $('vt_busy').classList.add('on');
       setStatus(forFinal ? T('Processing full quality...', 'Procesando calidad completa...') : T('Processing...', 'Procesando...'), 'busy');
       try {
-        await new Promise(r => requestAnimationFrame(r));
         await runProcess(forFinal);
       } catch (err) {
         console.error(err);
@@ -4142,6 +4493,37 @@ body[data-ux="advanced"] .simple-only{display:none !important}
     }
   })();
 
+  let processInProgress = false;
+  let downloadInProgress = false;
+  let resultNeedsReprocess = false;
+  function setProcessWorking(on){
+    [$('btn-process'), $('btn-process-2')].filter(Boolean).forEach((btn) => {
+      btn.classList.toggle('is-working', on);
+      btn.disabled = on || S.flowStep !== 'ready';
+      btn.setAttribute('aria-busy', on ? 'true' : 'false');
+      btn.textContent = on
+        ? T('Processing design…', 'Procesando diseño…')
+        : (resultNeedsReprocess
+            ? T('Reprocess design', 'Reprocesar diseño')
+            : T('Process design', 'Procesar diseño'));
+    });
+  }
+  function setDownloadWorking(on){
+    [$('download'), $('download-2')].filter(Boolean).forEach((link) => {
+      const btn = link.querySelector('button');
+      link.setAttribute('aria-disabled', (on || resultNeedsReprocess) ? 'true' : 'false');
+      if (!btn) return;
+      btn.classList.toggle('is-working', on);
+      btn.disabled = on || resultNeedsReprocess;
+      btn.setAttribute('aria-busy', on ? 'true' : 'false');
+      btn.textContent = on
+        ? T('Preparing full-quality PNG…', 'Preparando PNG en calidad completa…')
+        : (link.id === 'download'
+            ? T('Download transparent PNG (full quality)', 'Descargar PNG transparente (calidad completa)')
+            : T('Download PNG (full quality)', 'Descargar PNG (calidad completa)'));
+    });
+  }
+
   // Briefly flash a green "✓" pulse on both process buttons (the
   // canonical one inside card 4 and the sticky CTA at the bottom).
   // Driven from CSS — we just toggle the class and remove it after
@@ -4160,6 +4542,9 @@ body[data-ux="advanced"] .simple-only{display:none !important}
   }
 
   $('btn-process').addEventListener('click', async () => {
+    if (processInProgress) return;
+    processInProgress = true;
+    setProcessWorking(true);
     clearTimeout(debounceTimer);
     // Explicit user intent → apply halftone for this pass.
     S.halftoneActive = true;
@@ -4167,15 +4552,25 @@ body[data-ux="advanced"] .simple-only{display:none !important}
       await runOnce();
       const autoTrim = $('auto_trim');
       if (autoTrim && autoTrim.checked){
+        await allowUiPaint(1);
         const trimmed = autoTrimSourceFromResult();
         if (trimmed){
           setStatus(T('Auto-retrimming to halftone bounds…', 'Recortando a los límites del semitono…'), 'busy');
+          await allowUiPaint(1);
           await runOnce();
         }
+      }
+      markCtaDirty(settingsRevision !== lastProcessedRevision);
+      if (resultNeedsReprocess){
+        setStatus(T('New changes were made while processing. Press Reprocess design again.',
+                    'Se hicieron cambios durante el procesamiento. Pulsa Reprocesar diseño nuevamente.'));
       }
       flashProcessSuccess();
     } catch (err){
       console.error('Process failed:', err);
+    } finally {
+      processInProgress = false;
+      setProcessWorking(false);
     }
   });
 
@@ -4184,15 +4579,25 @@ body[data-ux="advanced"] .simple-only{display:none !important}
   // ==================================================================
   $('download').addEventListener('click', async (e) => {
     e.preventDefault();
-    if (!S.sourceCanvas) return;
+    if (!S.sourceCanvas || downloadInProgress) return;
+    if (resultNeedsReprocess){
+      setStatus(T('Reprocess the pending changes before downloading.',
+                  'Reprocesa los cambios pendientes antes de descargar.'), 'err');
+      return;
+    }
+    downloadInProgress = true;
+    setDownloadWorking(true);
     setStatus(T('Generating full quality PNG...', 'Generando PNG en calidad completa...'), 'busy');
     try {
       await runOnce(true);
-      paintResultCanvas();
 
+      await allowUiPaint(1);
       const blob = await new Promise((res) => $('result').toBlob((b) => res(b), 'image/png'));
+      if (!blob) throw new Error(T('The browser could not encode the PNG.', 'El navegador no pudo codificar el PNG.'));
+      await allowUiPaint(1);
       const buf = await blob.arrayBuffer();
-      const withDpi = injectDpiIntoPng(new Uint8Array(buf), S.lastResult.dpi);
+      await allowUiPaint(1);
+      const withDpi = await injectDpiIntoPngResponsive(new Uint8Array(buf), S.lastResult.dpi);
       const finalBlob = new Blob([withDpi], { type: 'image/png' });
       const url = URL.createObjectURL(finalBlob);
       const a = document.createElement('a');
@@ -4206,6 +4611,9 @@ body[data-ux="advanced"] .simple-only{display:none !important}
     } catch(err){
       console.error(err);
       setStatus(T('Error generating PNG: ', 'Error al generar PNG: ') + err.message, 'err');
+    } finally {
+      downloadInProgress = false;
+      setDownloadWorking(false);
     }
   });
 
@@ -4229,6 +4637,34 @@ body[data-ux="advanced"] .simple-only{display:none !important}
     out.set(u8.subarray(0, insertPos), 0);
     out.set(chunk, insertPos);
     out.set(u8.subarray(insertPos), insertPos + chunk.length);
+    return out;
+  }
+
+  // Chunked equivalent used by Download. Large PNGs are copied in 4 MB
+  // slices so the button animation and browser UI keep advancing.
+  async function injectDpiIntoPngResponsive(u8, dpi){
+    const ppm = Math.round(dpi / 0.0254);
+    const chunk = new Uint8Array(21);
+    chunk[0] = 0; chunk[1] = 0; chunk[2] = 0; chunk[3] = 9;
+    chunk[4] = 0x70; chunk[5] = 0x48; chunk[6] = 0x59; chunk[7] = 0x73;
+    chunk[8]  = (ppm >>> 24) & 0xff; chunk[9]  = (ppm >>> 16) & 0xff;
+    chunk[10] = (ppm >>> 8) & 0xff; chunk[11] =  ppm         & 0xff;
+    chunk[12] = (ppm >>> 24) & 0xff; chunk[13] = (ppm >>> 16) & 0xff;
+    chunk[14] = (ppm >>> 8) & 0xff; chunk[15] =  ppm         & 0xff;
+    chunk[16] = 1;
+    const crc = crc32(chunk.subarray(4, 17));
+    chunk[17] = (crc >>> 24) & 0xff; chunk[18] = (crc >>> 16) & 0xff;
+    chunk[19] = (crc >>> 8) & 0xff; chunk[20] = crc & 0xff;
+    const insertPos = 33;
+    const out = new Uint8Array(u8.length + chunk.length);
+    out.set(u8.subarray(0, insertPos), 0);
+    out.set(chunk, insertPos);
+    const COPY_CHUNK = 4 * 1024 * 1024;
+    for (let start = insertPos; start < u8.length; start += COPY_CHUNK){
+      const end = Math.min(u8.length, start + COPY_CHUNK);
+      out.set(u8.subarray(start, end), start + chunk.length);
+      if (end < u8.length) await allowUiPaint(1);
+    }
     return out;
   }
   let _crcTable = null;
@@ -4452,8 +4888,8 @@ body[data-ux="advanced"] .simple-only{display:none !important}
       else if (e.key === '+' || e.key === '=') zoomBy(1.25);
       else if (e.key === '-') zoomBy(1/1.25);
       else if (e.key === 'c' || e.key === 'C'){
-        // Recorre checker → garment → black → white → checker
-        const order = ['checker','garment','black','white'];
+        // Alterna transparencia ↔ color de la prenda seleccionada.
+        const order = ['checker','garment'];
         const i = order.indexOf(S.previewBg);
         setPreviewBg(order[(i+1) % order.length]);
       }
@@ -4480,8 +4916,6 @@ body[data-ux="advanced"] .simple-only{display:none !important}
   const PREVIEW_BG = {
     checker: '#ffffff',  // color base bajo el overlay de cuadros (no se ve)
     garment: null,       // dinámico: usa el color de prenda actual
-    black:   '#000000',
-    white:   '#ffffff',
   };
 
   function setPreviewBg(mode){
@@ -4566,9 +5000,16 @@ body[data-ux="advanced"] .simple-only{display:none !important}
     if (!opts || !opts.skipPicker) $('garment_picker').value = normalized.toLowerCase();
     if (!opts || !opts.skipHex)    $('garment_hex').value = normalized;
     document.documentElement.style.setProperty('--garment-color', normalized);
-    if (S.previewBg === 'garment'){
-      document.documentElement.style.setProperty('--preview-bg', normalized);
+    const garmentBgOption = document.querySelector('.bg-opt[data-bg="garment"]');
+    if (garmentBgOption){
+      const optionLabel = T(`Preview on selected garment: ${normalized}`,
+                            `Vista sobre la prenda seleccionada: ${normalized}`);
+      garmentBgOption.title = optionLabel;
+      garmentBgOption.setAttribute('aria-label', optionLabel);
     }
+    // Once the user explicitly changes/picks a garment color, preview the
+    // artwork on that exact color. Transparency remains one click away.
+    if (S.sourceCanvas) setPreviewBg('garment');
     // Sincronizar el preset de tipo: si el hex coincide con uno, marcarlo;
     // si no, pasar a "custom" para reflejar que es un color afinado a mano.
     let matchedPreset = null;
@@ -4880,10 +5321,12 @@ body[data-ux="advanced"] .simple-only{display:none !important}
     // ---- Flow step strings ----
     { sel: '#flow_choose_title',       en: 'What do you want to do?',     es: '¿Qué quieres hacer?' },
     { sel: '#flow_pick_upscale_title', en: 'Enhance with AI first',       es: 'Mejorar con IA primero' },
+    { sel: '#flow_tag_upscale',        en: 'Recommended',                 es: 'Recomendado' },
     { sel: '#flow_pick_upscale_desc',
       en: 'Recommended for small or low-resolution artwork. Multiplies detail ×4 without softening edges.',
       es: 'Recomendado si la imagen es chica o de baja resolución. Multiplica el detalle ×4 sin perder bordes.' },
     { sel: '#flow_pick_direct_title',  en: 'Skip to halftone',            es: 'Saltar al semitono' },
+    { sel: '#flow_tag_direct',         en: 'Continue directly',           es: 'Continuar directo' },
     { sel: '#flow_pick_direct_desc',
       en: 'The image already has enough resolution for the print size you need.',
       es: 'La imagen ya tiene suficiente resolución para el tamaño físico que vas a imprimir.' },
@@ -4994,6 +5437,10 @@ body[data-ux="advanced"] .simple-only{display:none !important}
     { sel: '#vt_100',  attr: 'title', en: 'Actual size 100% (1)', es: 'Tamaño real 100% (1)' },
 
     // ---- Prefs bar (lang + units) ----
+    { sel: '#app_generic_name',     en: 'Halftone Tool',          es: 'Herramienta de semitonos' },
+    { sel: '#app_generic_subtitle', en: 'Print preparation',      es: 'Preparación para impresión' },
+    { sel: '#app_generic_section',  en: 'Image processing',       es: 'Procesamiento de imagen' },
+    { sel: '#header_upload',        en: 'Upload design',          es: 'Subir diseño' },
     { sel: '#cap_lang', en: 'Language', es: 'Idioma'   },
     { sel: '#cap_unit', en: 'Units',    es: 'Unidades' },
   ];
@@ -5085,31 +5532,24 @@ body[data-ux="advanced"] .simple-only{display:none !important}
     // labels (Ready / Working / Done / Upload an image…) get translated.
     if (typeof refreshStrip === 'function') refreshStrip();
 
-    // Update lang-toggle active state
-    document.querySelectorAll('#langToggle button').forEach((b) => {
-      b.classList.toggle('active', b.dataset.lang === LANG);
-    });
+    // Keep the compact language dropdown synchronized.
+    const langSelect = $('langToggle');
+    if (langSelect) langSelect.value = LANG;
+    // Static translations above touch the CTA text; restore its current
+    // lifecycle label (Process / Reprocess / Processing) afterwards.
+    if (processInProgress) setProcessWorking(true);
+    else markCtaDirty(resultNeedsReprocess);
+    if (downloadInProgress) setDownloadWorking(true);
+    if (typeof refreshThemeToggleLabel === 'function') refreshThemeToggleLabel();
   }
-  // Lang toggle wiring
-  document.querySelectorAll('#langToggle button').forEach((b) => {
-    b.addEventListener('click', () => applyLang(b.dataset.lang));
-  });
-  // Boot: localStorage > timezone (Mexico → ES, others → EN) > navigator
+  // Language dropdown wiring
+  const langSelect = $('langToggle');
+  if (langSelect) langSelect.addEventListener('change', () => applyLang(langSelect.value));
+  // Boot: saved manual preference > primary device language.
+  // Spanish is selected only for es / es-MX / es-US / etc.; any other
+  // locale (French, German, Portuguese...) falls back to English.
   function detectDefaultLang(){
-    try {
-      const saved = localStorage.getItem('vk_lang');
-      if (saved === 'en' || saved === 'es') return saved;
-    } catch(_){}
-    try {
-      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
-      if (/Mexico|Tijuana|Hermosillo|Mazatlan|Chihuahua|Merida|Monterrey|Cancun|Bahia_Banderas|Matamoros|Ojinaga/i.test(tz)) return 'es';
-      // United States timezones (explicit, since the user asked for US → EN)
-      if (/America\/(New_York|Chicago|Denver|Los_Angeles|Phoenix|Anchorage|Adak|Boise|Detroit|Indiana|Kentucky|Juneau|Sitka|Yakutat|Nome|Honolulu)|Pacific\/Honolulu/i.test(tz)) return 'en';
-    } catch(_){}
-    try {
-      if ((navigator.language || '').toLowerCase().startsWith('es')) return 'es';
-    } catch(_){}
-    return 'en';
+    return window.APP_INITIAL_LANG === 'es' ? 'es' : 'en';
   }
 
   // ==================================================================
@@ -5156,18 +5596,16 @@ body[data-ux="advanced"] .simple-only{display:none !important}
       refreshFileCardSize();
     }
 
-    // Update unit-toggle active state
-    document.querySelectorAll('#unitToggle button').forEach((b) => {
-      b.classList.toggle('active', b.dataset.unit === UNIT);
-    });
+    // Keep the compact units dropdown synchronized.
+    const unitSelect = $('unitToggle');
+    if (unitSelect) unitSelect.value = UNIT;
 
     if (typeof updateTargetInfo === 'function') updateTargetInfo();
     if (!opts.skipProcess && typeof scheduleProcess === 'function') scheduleProcess();
   }
-  // Unit toggle wiring
-  document.querySelectorAll('#unitToggle button').forEach((b) => {
-    b.addEventListener('click', () => applyUnit(b.dataset.unit));
-  });
+  // Units dropdown wiring
+  const unitSelect = $('unitToggle');
+  if (unitSelect) unitSelect.addEventListener('change', () => applyUnit(unitSelect.value));
   // Boot: saved preference > derived from language (es → cm, en → in)
   function detectDefaultUnit(lang){
     try {
@@ -5220,8 +5658,23 @@ body[data-ux="advanced"] .simple-only{display:none !important}
   // "Dirty" indicator: any param change after a successful process
   // pulses the CTA so the user knows there's something new to re-run.
   function markCtaDirty(on){
-    if (btnP2) btnP2.classList.toggle('dirty', !!on);
-    if (btnP1) btnP1.classList.toggle('dirty', !!on);
+    resultNeedsReprocess = !!on && !!S.lastResult;
+    if (btnP2) btnP2.classList.toggle('dirty', resultNeedsReprocess);
+    if (btnP1) btnP1.classList.toggle('dirty', resultNeedsReprocess);
+    [btnP1, btnP2].filter(Boolean).forEach((btn) => {
+      if (btn.classList.contains('is-working')) return;
+      btn.textContent = resultNeedsReprocess
+        ? T('Reprocess design', 'Reprocesar diseño')
+        : T('Process design', 'Procesar diseño');
+    });
+    [dl1, dl2].filter(Boolean).forEach((link) => {
+      const btn = link.querySelector('button');
+      link.setAttribute('aria-disabled', resultNeedsReprocess ? 'true' : 'false');
+      link.title = resultNeedsReprocess
+        ? T('Reprocess the pending changes before downloading.', 'Reprocesa los cambios pendientes antes de descargar.')
+        : '';
+      if (btn && !btn.classList.contains('is-working')) btn.disabled = resultNeedsReprocess;
+    });
   }
   // Hook into every slider/input that triggers scheduleProcess.
   ['s_remove','s_spread','color_tol','color_feather','color_chroma','gamma',
@@ -5231,13 +5684,8 @@ body[data-ux="advanced"] .simple-only{display:none !important}
     el.addEventListener('input',  () => { if (S.lastResult) markCtaDirty(true); });
     el.addEventListener('change', () => { if (S.lastResult) markCtaDirty(true); });
   });
-  // Clearing dirty happens when a process pass completes — patch the
-  // existing btn-process click to clear after its work is done.
-  btnP1.addEventListener('click', () => {
-    // microtask after the existing handler runs (it's async); the next
-    // tick still has S.lastResult fresh from the run.
-    Promise.resolve().then(() => setTimeout(() => markCtaDirty(false), 50));
-  });
+  // Dirty is cleared by the canonical async process handler only after
+  // all processing and optional auto-trim passes have completed.
 
   // -------- Status strip --------
   const ss = $('statusStrip');
@@ -5464,8 +5912,51 @@ body[data-ux="advanced"] .simple-only{display:none !important}
     }, true);
   }
 
-  // Boot the language + units system. Language: localStorage > timezone
-  // (Mexico → ES, US/etc → EN) > navigator. Units: localStorage > derived
+  // ==================================================================
+  //   LIGHT / DARK THEME
+  // ==================================================================
+  const themeToggle = $('themeToggle');
+  let themeWasChosenManually = false;
+  try { themeWasChosenManually = ['light','dark'].includes(localStorage.getItem('vk_theme')); } catch(_){}
+
+  function refreshThemeToggleLabel(){
+    if (!themeToggle) return;
+    const isDark = document.documentElement.dataset.theme === 'dark';
+    const label = isDark
+      ? T('Switch to light mode', 'Cambiar a modo claro')
+      : T('Switch to dark mode', 'Cambiar a modo oscuro');
+    themeToggle.title = label;
+    themeToggle.setAttribute('aria-label', label);
+    themeToggle.setAttribute('aria-pressed', isDark ? 'true' : 'false');
+  }
+
+  function applyTheme(theme, persist){
+    const next = theme === 'dark' ? 'dark' : 'light';
+    document.documentElement.dataset.theme = next;
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.content = next === 'dark' ? '#0e0e12' : '#ffffff';
+    if (persist){
+      themeWasChosenManually = true;
+      try { localStorage.setItem('vk_theme', next); } catch(_){}
+    }
+    refreshThemeToggleLabel();
+  }
+
+  if (themeToggle){
+    themeToggle.addEventListener('click', () => {
+      applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark', true);
+    });
+  }
+  const systemTheme = matchMedia('(prefers-color-scheme: dark)');
+  if (systemTheme && typeof systemTheme.addEventListener === 'function'){
+    systemTheme.addEventListener('change', (event) => {
+      if (!themeWasChosenManually) applyTheme(event.matches ? 'dark' : 'light', false);
+    });
+  }
+  applyTheme(window.APP_INITIAL_THEME, false);
+
+  // Boot the language + units system. Language: localStorage > device
+  // language (Spanish only for es*, English otherwise). Units: saved > derived
   // from the active language (es → cm, en → in). Both stay editable via
   // the prefs bar in the top-right corner.
   (function bootLangAndUnits(){
