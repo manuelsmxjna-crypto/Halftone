@@ -12,8 +12,9 @@
   // "es" selects Spanish. Every other language falls back to English.
   try {
     const savedLang = localStorage.getItem('vk_lang');
+    const hasManualLang = localStorage.getItem('vk_lang_manual') === '1';
     const deviceLang = ((navigator.languages && navigator.languages[0]) || navigator.language || '').toLowerCase();
-    window.APP_INITIAL_LANG = (savedLang === 'es' || savedLang === 'en')
+    window.APP_INITIAL_LANG = hasManualLang && (savedLang === 'es' || savedLang === 'en')
       ? savedLang
       : (deviceLang.startsWith('es') ? 'es' : 'en');
   } catch(_) {
@@ -2152,7 +2153,7 @@ html[data-theme="dark"] .btn.is-working{background:linear-gradient(110deg,#087f7
         </div>
       </div>
 
-      <small class="advanced-only">
+      <small id="separationHelp" class="advanced-only">
         <b>By luminance</b>: dark areas of the image are removed (ideal for <b>black</b> garments).<br>
         <b>By color</b>: areas matching the chosen garment color are removed (ideal for <b>red, blue, beige</b>, etc.). Halftone appears ONLY in the transition band.
         <br><b>Transparency / Neon</b>: converts gradual PNG opacity into printable binary dots while preserving RGB color.
@@ -5002,8 +5003,12 @@ html[data-theme="dark"] .btn.is-working{background:linear-gradient(110deg,#087f7
     document.documentElement.style.setProperty('--garment-color', normalized);
     const garmentBgOption = document.querySelector('.bg-opt[data-bg="garment"]');
     if (garmentBgOption){
-      const optionLabel = T(`Preview on selected garment: ${normalized}`,
-                            `Vista sobre la prenda seleccionada: ${normalized}`);
+      // This function also runs during early boot, before the translation
+      // helper is initialized. Read the already-detected document language
+      // directly so initialization cannot be interrupted.
+      const optionLabel = document.documentElement.lang === 'es'
+        ? `Vista sobre la prenda seleccionada: ${normalized}`
+        : `Preview on selected garment: ${normalized}`;
       garmentBgOption.title = optionLabel;
       garmentBgOption.setAttribute('aria-label', optionLabel);
     }
@@ -5246,7 +5251,9 @@ html[data-theme="dark"] .btn.is-working{background:linear-gradient(110deg,#087f7
   //   [selector, EN, ES, optional attr]. Dynamic strings (status
   //   messages, color readouts) use the inline T(en, es) helper.
   // ==================================================================
-  let LANG = 'en';
+  // Start with the language resolved in <head>, so dynamic messages shown
+  // before the final i18n boot never flash in the wrong language.
+  let LANG = window.APP_INITIAL_LANG === 'es' ? 'es' : 'en';
   function T(en, es){ return LANG === 'es' ? es : en; }
 
   // ==================================================================
@@ -5380,6 +5387,9 @@ html[data-theme="dark"] .btn.is-working{background:linear-gradient(110deg,#087f7
     { sel: '.mode-btn[data-mode="color"] .mode-tag', en: 'colored garment', es: 'prenda de color' },
     { sel: '.mode-btn[data-mode="alpha"] > span:first-child', en: 'Transparency / Neon', es: 'Transparencia / Neón' },
     { sel: '.mode-btn[data-mode="alpha"] .mode-tag', en: 'soft alpha PNG', es: 'PNG con alfa suave' },
+    { sel: '#separationHelp', html: true,
+      en: '<b>By luminance</b>: dark areas of the image are removed (ideal for <b>black</b> garments).<br><b>By color</b>: areas matching the chosen garment color are removed (ideal for <b>red, blue, beige</b>, etc.). Halftone appears ONLY in the transition band.<br><b>Transparency / Neon</b>: converts gradual PNG opacity into printable binary dots while preserving RGB color.',
+      es: '<b>Por luminancia</b>: elimina las zonas oscuras de la imagen (ideal para prendas <b>negras</b>).<br><b>Por color</b>: elimina las zonas que coinciden con el color elegido de la prenda (ideal para <b>rojo, azul, beige</b>, etc.). El semitono aparece ÚNICAMENTE en la banda de transición.<br><b>Transparencia / Neón</b>: convierte la opacidad gradual de un PNG en puntos binarios imprimibles, conservando el color RGB.' },
     { labelFor: 'gamma',         en: 'Gamma ', es: 'Gamma ', textOnly: true },
     { labelFor: 'black_cut',     en: 'Black cut ', es: 'Corte de negros ', textOnly: true },
     { labelFor: 'white_cut',     en: 'White cut ', es: 'Corte de blancos ', textOnly: true },
@@ -5446,10 +5456,15 @@ html[data-theme="dark"] .btn.is-working{background:linear-gradient(110deg,#087f7
   ];
   // For "__sibling_label__" entries above, translate the <span> sibling
   // inside the same .kv row that precedes the <b id="…"> reference.
-  function applyLang(lang){
+  function applyLang(lang, persistManual){
     LANG = (lang === 'es') ? 'es' : 'en';
     document.documentElement.lang = LANG;
-    try { localStorage.setItem('vk_lang', LANG); } catch(_){}
+    if (persistManual){
+      try {
+        localStorage.setItem('vk_lang', LANG);
+        localStorage.setItem('vk_lang_manual', '1');
+      } catch(_){}
+    }
 
     // Resolve a translation entry to a NodeList. Supports:
     //   - sel: any CSS selector
@@ -5500,6 +5515,10 @@ html[data-theme="dark"] .btn.is-working{background:linear-gradient(110deg,#087f7
           el.setAttribute(t.attr, value);
           return;
         }
+        if (t.html){
+          el.innerHTML = value;
+          return;
+        }
         if (t.textOnly){
           // Replace the LAST text node only — preserves child SVGs/spans.
           for (let i = el.childNodes.length - 1; i >= 0; i--){
@@ -5544,7 +5563,7 @@ html[data-theme="dark"] .btn.is-working{background:linear-gradient(110deg,#087f7
   }
   // Language dropdown wiring
   const langSelect = $('langToggle');
-  if (langSelect) langSelect.addEventListener('change', () => applyLang(langSelect.value));
+  if (langSelect) langSelect.addEventListener('change', () => applyLang(langSelect.value, true));
   // Boot: saved manual preference > primary device language.
   // Spanish is selected only for es / es-MX / es-US / etc.; any other
   // locale (French, German, Portuguese...) falls back to English.
