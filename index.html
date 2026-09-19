@@ -342,7 +342,7 @@ body[data-ux="advanced"] .simple-only{display:none !important}
   padding:4px;border-radius:10px;
   background:rgba(255,255,255,.04);
   border:1px solid var(--border);
-  /* Extra top margin so the floating "Recommended" pill on the Light
+  /* Extra top margin so the floating "Recommended" pill on the Balanced
      button has breathing room and doesn't clip against the label. */
   margin-top:16px;
   overflow:visible;
@@ -363,7 +363,7 @@ body[data-ux="advanced"] .simple-only{display:none !important}
   box-shadow:inset 0 0 0 1px var(--cyan);
 }
 .intensity-btn .intensity-icon{font-size:15px;line-height:1;margin-bottom:2px}
-/* "Recommended" pill on the Light preset — sits above the button so
+/* "Recommended" pill on the Balanced preset — sits above the button so
    it doesn't push the icon/label around. Uses the same cyan accent as
    the active state so users read it as "this is the default pick". */
 .intensity-btn .intensity-badge{
@@ -2046,18 +2046,18 @@ html[data-theme="dark"] .btn.is-working{background:linear-gradient(110deg,#087f7
       <div class="simple-only">
         <label class="prominent-heading" id="intensityLabel">Halftone strength <i class="help" data-tip="Preset combinations of removal + halftone width. Light preserves more of the design (subtle effect); Strong removes more of the garment color and produces a wider halftone band.">?</i></label>
         <div class="intensity-toggle" id="intensityToggle" role="tablist" aria-labelledby="intensityLabel">
-          <button type="button" class="intensity-btn active"   data-intensity="light"    role="tab" aria-selected="true">
-            <span class="intensity-badge" id="intensityBadge">Recommended</span>
+          <button type="button" class="intensity-btn"          data-intensity="light"    role="tab" aria-selected="false">
             <span class="intensity-icon">◔</span><span class="intensity-name">Light</span>
           </button>
-          <button type="button" class="intensity-btn"          data-intensity="balanced" role="tab" aria-selected="false">
+          <button type="button" class="intensity-btn active"   data-intensity="balanced" role="tab" aria-selected="true">
+            <span class="intensity-badge" id="intensityBadge">Recommended</span>
             <span class="intensity-icon">◑</span><span class="intensity-name">Balanced</span>
           </button>
           <button type="button" class="intensity-btn"          data-intensity="strong"   role="tab" aria-selected="false">
             <span class="intensity-icon">●</span><span class="intensity-name">Strong</span>
           </button>
         </div>
-        <div class="intensity-hint" id="intensityHint">Light: minimal removal, keeps most of the design intact.</div>
+        <div class="intensity-hint" id="intensityHint">Balanced: removes the garment color and halftones the mid-tones.</div>
 
         <!-- The two sliders live on but hidden — SIMPLE_SYNC and the
              worker keep reading their .value, and the intensity buttons
@@ -2150,8 +2150,8 @@ html[data-theme="dark"] .btn.is-working{background:linear-gradient(110deg,#087f7
         <label>Angle <i class="help" data-tip="Screen angle. 22.5° is the classic angle for single-ink screen printing.">?</i><span class="val" id="v_angle">22.5</span></label>
         <input type="range" id="angle" min="0" max="90" step="0.5" value="22.5">
 
-        <label>Minimum dot (mm) <i class="help" data-tip="Minimum physical size of a printable dot. DTF production floor is ~0.20 mm — finer dots may not transfer reliably (powder buries them, washes blow them out).">?</i><span class="val" id="v_min_dot_mm">0.20</span></label>
-        <input type="range" id="min_dot_mm" min="0.10" max="0.8" step="0.01" value="0.2">
+        <label>Minimum dot (mm) <i class="help" data-tip="Minimum physical size of a printable dot. DTF production floor is ~0.20 mm — finer dots may not transfer reliably (powder buries them, washes blow them out).">?</i><span class="val" id="v_min_dot_mm">0.10</span></label>
+        <input type="range" id="min_dot_mm" min="0.10" max="0.8" step="0.01" value="0.1">
         <div class="field-warn" id="min_dot_warn" hidden>⚠ Below the DTF production floor (~0.15 mm). Dots this small may not transfer on standard printers.</div>
 
         <label class="toggle advanced-only">
@@ -2730,7 +2730,7 @@ html[data-theme="dark"] .btn.is-working{background:linear-gradient(110deg,#087f7
     // UX
     uxMode: 'simple',            // 'simple' | 'advanced' — qué controles ve el usuario
     garmentPreset: 'negra',      // preset de tipo de prenda activo (ver GARMENT_PRESETS)
-    intensity:    'light',       // 'light' | 'balanced' | 'strong' — Light is the default (recommended)
+    intensity:    'balanced',    // 'light' | 'balanced' | 'strong' — Balanced is the default (recommended)
     // Vistas
     viewMode: 'result',          // 'result' | 'original' | 'mask' | 'zones'
     previewBg: 'checker',        // 'checker' | 'garment' | 'black' | 'white' — solo visual
@@ -2876,8 +2876,8 @@ html[data-theme="dark"] .btn.is-working{background:linear-gradient(110deg,#087f7
     //   white_cut = black_cut + 80 + (v/100) * 100
     negra: {
       light:    { s_remove:  0, s_spread:  0 }, // bc=0,  wc=80
-      balanced: { s_remove: 15, s_spread: 25 }, // bc=27, wc=132
-      strong:   { s_remove: 30, s_spread: 40 }, // bc=54, wc=174
+      balanced: { s_remove: 23, s_spread: 80 }, // bc=41, wc=201
+      strong:   { s_remove: 30, s_spread:100 }, // bc=54, wc=234
     },
     // Color-distance presets. tol / feather are UI units → Oklab via /200.
     blanca: {
@@ -2917,6 +2917,36 @@ html[data-theme="dark"] .btn.is-working{background:linear-gradient(110deg,#087f7
     },
   };
 
+  // Production values approved for the recommended Balanced preset.
+  // These controls are shared by every garment mode; the black/white
+  // cuts for a black garment are produced by its 23/80 pair above.
+  const BALANCED_PRINT_SETTINGS = {
+    gamma: 1,
+    lpi: 35,
+    angle: 22.5,
+    soft_edges: false,
+    alpha_threshold_on: true,
+    alpha_threshold: 128,
+  };
+
+  function applyBalancedPrintSettings(){
+    const values = BALANCED_PRINT_SETTINGS;
+    const display = {
+      gamma: '1.00',
+      lpi: '35',
+      angle: '22.5',
+      alpha_threshold: '128',
+    };
+    ['gamma','lpi','angle','alpha_threshold'].forEach((id) => {
+      const input = $(id);
+      if (input) input.value = values[id];
+      const label = $('v_' + id);
+      if (label) label.textContent = display[id];
+    });
+    $('soft_edges').checked = values.soft_edges;
+    $('alpha_threshold_on').checked = values.alpha_threshold_on;
+  }
+
   // Pushes the (s_remove, s_spread) pair for the current garment +
   // intensity combo into the hidden sliders, then hands off to
   // SIMPLE_SYNC so the advanced-mode fields update as well. Optional
@@ -2936,6 +2966,7 @@ html[data-theme="dark"] .btn.is-working{background:linear-gradient(110deg,#087f7
       if (label) label.textContent = v;
       SIMPLE_SYNC[id](v);
     });
+    if (level === 'balanced') applyBalancedPrintSettings();
     if (!(opts && opts.skipReprocess) && S.sourceCanvas) scheduleProcess();
   }
 
@@ -2994,7 +3025,7 @@ html[data-theme="dark"] .btn.is-working{background:linear-gradient(110deg,#087f7
     // the user picked a garment type. They are now independent: pick a
     // garment for color separation; pick a preview background from the
     // viewer toolbar to evaluate how the cut-out reads on top of it.
-    if (S.sourceCanvas) scheduleProcess();
+    if (S.sourceCanvas) scheduleManualReprocess();
   }
 
   // ==================================================================
@@ -3226,6 +3257,7 @@ html[data-theme="dark"] .btn.is-working{background:linear-gradient(110deg,#087f7
     S.lastResult = null;
     settingsRevision = 0;
     lastProcessedRevision = -1;
+    manualSettingsRevision = -1;
     try { markCtaDirty(false); } catch(_){}
     const dlMain = $('download'); if (dlMain) dlMain.style.display = 'none';
     const dlSticky = $('download-2'); if (dlSticky) dlSticky.style.display = 'none';
@@ -3261,6 +3293,7 @@ html[data-theme="dark"] .btn.is-working{background:linear-gradient(110deg,#087f7
     S.originalSourceCanvas    = null;
     S.originalSourceDpi       = 72;
     S.originalSourceDpiKnown  = false;
+    manualSettingsRevision = -1;
     try { markCtaDirty(false); } catch(_){}
     const dlMain = $('download'); if (dlMain) dlMain.style.display = 'none';
     const dlSticky = $('download-2'); if (dlSticky) dlSticky.style.display = 'none';
@@ -3658,33 +3691,33 @@ html[data-theme="dark"] .btn.is-working{background:linear-gradient(110deg,#087f7
   //   UI · Tamaño destino + candado de proporción
   // ==================================================================
   $('new_w_cm').addEventListener('input', () => {
-    if (S.updatingRatio || !S.ratio){ updateTargetInfo(); scheduleProcess(); return; }
+    if (S.updatingRatio || !S.ratio){ updateTargetInfo(); scheduleManualReprocess(); return; }
     if ($('lock_ratio').checked){
       S.updatingRatio = true;
       const w = parseFloat($('new_w_cm').value) || 0;
       $('new_h_cm').value = (w * S.ratio).toFixed(2);
       S.updatingRatio = false;
     }
-    updateTargetInfo(); scheduleProcess();
+    updateTargetInfo(); scheduleManualReprocess();
   });
   $('new_h_cm').addEventListener('input', () => {
-    if (S.updatingRatio || !S.ratio){ updateTargetInfo(); scheduleProcess(); return; }
+    if (S.updatingRatio || !S.ratio){ updateTargetInfo(); scheduleManualReprocess(); return; }
     if ($('lock_ratio').checked){
       S.updatingRatio = true;
       const h = parseFloat($('new_h_cm').value) || 0;
       $('new_w_cm').value = (h / S.ratio).toFixed(2);
       S.updatingRatio = false;
     }
-    updateTargetInfo(); scheduleProcess();
+    updateTargetInfo(); scheduleManualReprocess();
   });
   $('lock_ratio').addEventListener('change', () => {
     if ($('lock_ratio').checked){
       const w = parseFloat($('new_w_cm').value) || 0;
       $('new_h_cm').value = (w * S.ratio).toFixed(2);
-      updateTargetInfo(); scheduleProcess();
+      updateTargetInfo(); scheduleManualReprocess();
     }
   });
-  $('target_dpi').addEventListener('input', () => { updateTargetInfo(); scheduleProcess(); });
+  $('target_dpi').addEventListener('input', () => { updateTargetInfo(); scheduleManualReprocess(); });
   $('fast_mode').addEventListener('change', () => { updateTargetInfo(); scheduleProcess(0); });
 
   function updateTargetInfo(){
@@ -4327,6 +4360,7 @@ html[data-theme="dark"] .btn.is-working{background:linear-gradient(110deg,#087f7
   let debounceTimer = null;
   let settingsRevision = 0;
   let lastProcessedRevision = -1;
+  let manualSettingsRevision = -1;
   // Serialized run queue:
   //   · `runChain` is the promise tail — every run appends to it so they
   //     execute strictly in order (and inside, only one is "in flight").
@@ -4339,18 +4373,47 @@ html[data-theme="dark"] .btn.is-working{background:linear-gradient(110deg,#087f7
   let runChain = Promise.resolve();
   let queuedPreview = null;
 
-  function scheduleProcess(delayMs){
+  // Most controls update the existing result automatically. Size and
+  // garment-color changes use scheduleManualReprocess() instead because
+  // they can be substantially more expensive and may change the output
+  // dimensions or the entire separation mask.
+  function scheduleProcess(delayMs=180){
     if (!S.sourceCanvas) return;
-    // Parameter changes are intentionally manual. Keep the current
-    // preview untouched and turn the CTA into "Reprocess" instead of
-    // silently launching another expensive render.
     clearTimeout(debounceTimer);
     if (S.flowStep !== 'ready') return;
     settingsRevision++;
+    if (!S.lastResult){
+      markCtaDirty(false);
+      setStatus(T('Ready. Press Process design to generate the halftone.',
+                  'Listo. Pulsa Procesar diseño para generar el semitono.'));
+      return;
+    }
+    // A live render would also consume a pending size/color change. Keep
+    // the current preview stable until the user explicitly reprocesses.
+    if (manualSettingsRevision > lastProcessedRevision){
+      markCtaDirty(true);
+      setStatus(T('Size or garment color changed. Press Reprocess design to update the preview.',
+                  'Cambió el tamaño o el color de prenda. Pulsa Reprocesar diseño para actualizar la vista previa.'));
+      return;
+    }
+    markCtaDirty(false);
+    debounceTimer = setTimeout(async () => {
+      debounceTimer = null;
+      await runOnce();
+      if (manualSettingsRevision <= lastProcessedRevision) markCtaDirty(false);
+    }, Math.max(0, delayMs));
+  }
+
+  function scheduleManualReprocess(){
+    if (!S.sourceCanvas) return;
+    clearTimeout(debounceTimer);
+    if (S.flowStep !== 'ready') return;
+    settingsRevision++;
+    manualSettingsRevision = settingsRevision;
     if (S.lastResult){
       markCtaDirty(true);
-      setStatus(T('Changes pending. Press Reprocess design to update the preview.',
-                  'Hay cambios pendientes. Pulsa Reprocesar diseño para actualizar la vista previa.'));
+      setStatus(T('Size or garment color changed. Press Reprocess design to update the preview.',
+                  'Cambió el tamaño o el color de prenda. Pulsa Reprocesar diseño para actualizar la vista previa.'));
     } else {
       markCtaDirty(false);
       setStatus(T('Ready. Press Process design to generate the halftone.',
@@ -4987,8 +5050,8 @@ html[data-theme="dark"] .btn.is-working{background:linear-gradient(110deg,#087f7
     document.querySelectorAll('#garmentTypeGrid .g-type').forEach((b) => {
       b.classList.toggle('active', b.dataset.preset === S.garmentPreset);
     });
-    if ((!opts || !opts.skipReprocess) && S.separationMode === 'color' && S.sourceCanvas){
-      scheduleProcess();
+    if ((!opts || !opts.skipReprocess) && S.sourceCanvas){
+      scheduleManualReprocess();
     }
     return true;
   }
@@ -5629,8 +5692,8 @@ html[data-theme="dark"] .btn.is-working{background:linear-gradient(110deg,#087f7
   new MutationObserver(syncCta).observe(dl1,   { attributes:true, attributeFilter:['style'] });
   syncCta();
 
-  // "Dirty" indicator: any param change after a successful process
-  // pulses the CTA so the user knows there's something new to re-run.
+  // "Dirty" indicator for changes that intentionally require an explicit
+  // reprocess (output size or garment color).
   function markCtaDirty(on){
     resultNeedsReprocess = !!on && !!S.lastResult;
     if (btnP2) btnP2.classList.toggle('dirty', resultNeedsReprocess);
@@ -5650,14 +5713,6 @@ html[data-theme="dark"] .btn.is-working{background:linear-gradient(110deg,#087f7
       if (btn && !btn.classList.contains('is-working')) btn.disabled = resultNeedsReprocess;
     });
   }
-  // Hook into every slider/input that triggers scheduleProcess.
-  ['s_remove','s_spread','color_tol','color_feather','color_chroma','gamma',
-   'black_cut','white_cut','brightness','contrast','sharpness','lpi',
-   'angle','min_dot_mm','garment_picker','garment_hex'].forEach((id) => {
-    const el = $(id); if (!el) return;
-    el.addEventListener('input',  () => { if (S.lastResult) markCtaDirty(true); });
-    el.addEventListener('change', () => { if (S.lastResult) markCtaDirty(true); });
-  });
   // Dirty is cleared by the canonical async process handler only after
   // all processing and optional auto-trim passes have completed.
 
