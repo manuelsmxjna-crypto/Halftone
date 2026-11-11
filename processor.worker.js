@@ -228,17 +228,38 @@ self.onmessage = (e) => {
 
     const isAlphaMode = params.separationMode === 'alpha';
     const isColorMode = params.separationMode === 'color' && params.garmentLab;
-    const tone = isAlphaMode
-      ? toneFromAlpha(baseAlpha, params.blackCut, params.whiteCut, params.gamma)
-      : isColorMode ? toneFromColorDistance(
+    let tone;
+    if (isAlphaMode) {
+      // Neon is a combined two-stage separation in one pass:
+      //   1) convert soft source opacity to a printable screen;
+      //   2) remove the selected garment color from the RGB artwork.
+      // With the same screen grid, intersecting both binary passes is
+      // equivalent to screening min(alphaTone, garmentTone) once.
+      const alphaTone = toneFromAlpha(baseAlpha, params.blackCut, params.whiteCut, params.gamma);
+      const garmentTone = params.alphaRemovalMode === 'color' && params.garmentLab
+        ? toneFromColorDistance(
+          data, width, height,
+          params.garmentLab, params.colorTol, params.colorFeather,
+          params.colorChroma, params.preserveLuma, params.gamma,
+        )
+        : toneFromLuminance(
+          data, width, height,
+          params.blackCut, params.whiteCut, params.gamma,
+        );
+      tone = alphaTone;
+      for (let i = 0; i < N; i++) tone[i] = Math.min(alphaTone[i], garmentTone[i]);
+    } else if (isColorMode) {
+      tone = toneFromColorDistance(
         data, width, height,
         params.garmentLab, params.colorTol, params.colorFeather,
         params.colorChroma, params.preserveLuma, params.gamma,
-      )
-      : toneFromLuminance(
+      );
+    } else {
+      tone = toneFromLuminance(
         data, width, height,
         params.blackCut, params.whiteCut, params.gamma,
       );
+    }
 
     let screenAlpha = null;
     if (params.halftoneOn) {

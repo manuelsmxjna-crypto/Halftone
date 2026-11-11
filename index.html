@@ -2084,7 +2084,7 @@ html[data-theme="dark"] .btn.is-working{background:linear-gradient(110deg,#087f7
           </button>
           <button class="mode-btn" data-mode="alpha" type="button" role="tab" aria-selected="false">
             <span>Transparency / Neon</span>
-            <span class="mode-tag">soft alpha PNG</span>
+            <span class="mode-tag">alpha + garment removal</span>
           </button>
         </div>
 
@@ -2120,7 +2120,7 @@ html[data-theme="dark"] .btn.is-working{background:linear-gradient(110deg,#087f7
       <small id="separationHelp" class="advanced-only">
         <b>By luminance</b>: dark areas of the image are removed (ideal for <b>black</b> garments).<br>
         <b>By color</b>: areas matching the chosen garment color are removed (ideal for <b>red, blue, beige</b>, etc.). Halftone appears ONLY in the transition band.
-        <br><b>Transparency / Neon</b>: converts gradual PNG opacity into printable binary dots while preserving RGB color.
+        <br><b>Transparency / Neon</b>: screens gradual PNG opacity and also removes the selected garment color in the same pass.
       </small>
     </div>
 
@@ -2737,6 +2737,7 @@ html[data-theme="dark"] .btn.is-working{background:linear-gradient(110deg,#087f7
     // Modo de separación (afecta cómo se calcula el tono que alimenta el semitono)
     //   'luminance' → para PRENDA NEGRA (lo oscuro se elimina)
     //   'color'     → para PRENDA DE COLOR (lo parecido al color de prenda se elimina)
+    //   'alpha'     → combina opacidad PNG + eliminación de la prenda
     separationMode: 'luminance',
     garmentColor: { r: 0x00, g: 0x00, b: 0x00, hex: '#000000', lab: null },
     pickingGarment: false,
@@ -3005,6 +3006,10 @@ html[data-theme="dark"] .btn.is-working{background:linear-gradient(110deg,#087f7
   function applyGarmentPreset(name){
     const p = GARMENT_PRESETS[name];
     if (!p) return;
+    // Once Neon mode is active, choosing a garment changes only the
+    // second-stage removal (luminance for black, color distance for the
+    // others). It must not discard the source-alpha stage.
+    const preserveAlphaMode = S.separationMode === 'alpha' && !!S.sourceCanvas;
     S.garmentPreset = name;
     document.querySelectorAll('#garmentTypeGrid .g-type').forEach((b) => {
       b.classList.toggle('active', b.dataset.preset === name);
@@ -3012,7 +3017,7 @@ html[data-theme="dark"] .btn.is-working{background:linear-gradient(110deg,#087f7
     // Ocultar swatch del último eyedropper si cambiamos de prenda
     const pp = $('pickedPreview');
     if (pp) pp.style.display = 'none';
-    setSeparationMode(p.mode);
+    setSeparationMode(preserveAlphaMode ? 'alpha' : p.mode);
     if (p.hex) setGarmentColorFromHex(p.hex, { skipReprocess: true, keepPreset: true });
     // Apply the current intensity level for the new garment. This
     // takes care of updating both the (hidden) simple sliders and
@@ -3244,6 +3249,58 @@ html[data-theme="dark"] .btn.is-working{background:linear-gradient(110deg,#087f7
     resetUploadState();
   });
 
+  // Every uploaded file starts from the same production defaults. Nothing
+  // from a previous customer's Advanced-mode session is allowed to leak into
+  // the next design. Language, units and theme are preferences, so those are
+  // intentionally left untouched.
+  function resetProcessingDefaults(){
+    clearTimeout(debounceTimer);
+    S.halftoneActive = false;
+    S.pickingGarment = false;
+    S.intensity = 'balanced';
+
+    const setValue = (id, value, display=value) => {
+      const input = $(id);
+      if (input) input.value = value;
+      const label = $('v_' + id);
+      if (label) label.textContent = display;
+    };
+    setValue('brightness', 1, '1');
+    setValue('contrast', 1, '1');
+    setValue('sharpness', 1, '1');
+    setValue('gamma', 1, '1.00');
+    setValue('color_chroma', 1, '1');
+    setValue('lpi', 35, '35');
+    setValue('angle', 22.5, '22.5');
+    setValue('min_dot_mm', 0.1, '0.10');
+    setValue('alpha_threshold', 128, '128');
+
+    $('preserve_luma').checked = false;
+    $('soft_edges').checked = false;
+    $('alpha_threshold_on').checked = true;
+    $('halftone_enabled').checked = true;
+    $('auto_trim').checked = true;
+    $('lock_ratio').checked = true;
+    $('target_dpi').value = 300;
+    $('fast_mode').checked = false;
+    const warning = $('min_dot_warn');
+    if (warning) warning.hidden = false;
+
+    // Reuse the canonical preset logic without scheduling work against the
+    // previous image that may still be present while a replacement loads.
+    const previousSource = S.sourceCanvas;
+    S.sourceCanvas = null;
+    S.separationMode = 'luminance';
+    applyGarmentPreset('negra');
+    S.sourceCanvas = previousSource;
+
+    setUxMode('simple');
+    setViewMode('result');
+    setPreviewBg('checker');
+    const picked = $('pickedPreview');
+    if (picked) picked.style.display = 'none';
+  }
+
   function handleNewFile(file){
     if (!/^image\//.test(file.type)){
       setDropzoneError('Only PNG, JPG or WEBP images are accepted.');
@@ -3258,6 +3315,7 @@ html[data-theme="dark"] .btn.is-working{background:linear-gradient(110deg,#087f7
     settingsRevision = 0;
     lastProcessedRevision = -1;
     manualSettingsRevision = -1;
+    resetProcessingDefaults();
     try { markCtaDirty(false); } catch(_){}
     const dlMain = $('download'); if (dlMain) dlMain.style.display = 'none';
     const dlSticky = $('download-2'); if (dlSticky) dlSticky.style.display = 'none';
@@ -3764,6 +3822,9 @@ html[data-theme="dark"] .btn.is-working{background:linear-gradient(110deg,#087f7
       whiteCut:   parseFloat($('white_cut').value),
       // Modo color
       separationMode: S.separationMode,
+      // In Neon mode, black garments use luminance removal while any
+      // selected chromatic garment uses OKLab color-distance removal.
+      alphaRemovalMode: S.garmentColor.hex.toUpperCase() === '#000000' ? 'luminance' : 'color',
       garmentLab:     S.garmentColor.lab,
       colorTol:       parseFloat($('color_tol').value),
       colorFeather:   parseFloat($('color_feather').value),
@@ -4162,11 +4223,19 @@ html[data-theme="dark"] .btn.is-working{background:linear-gradient(110deg,#087f7
     for (let i = 0; i < N; i++) baseAlpha[i] = data[i*4 + 3];
     const isAlphaMode = p.separationMode === 'alpha';
     const isColorMode = p.separationMode === 'color' && p.garmentLab;
-    const tone = isAlphaMode
-      ? toneFromAlpha(baseAlpha, p.blackCut, p.whiteCut, p.gamma)
-      : isColorMode
+    let tone;
+    if (isAlphaMode){
+      const alphaTone = toneFromAlpha(baseAlpha, p.blackCut, p.whiteCut, p.gamma);
+      const garmentTone = p.alphaRemovalMode === 'color' && p.garmentLab
         ? toneFromColorDistance(data, work.width, work.height, p.garmentLab, p.colorTol, p.colorFeather, p.colorChroma, p.preserveLuma, p.gamma)
         : toneFromLuminance(data, work.width, work.height, p.blackCut, p.whiteCut, p.gamma);
+      tone = alphaTone;
+      for (let i = 0; i < N; i++) tone[i] = Math.min(alphaTone[i], garmentTone[i]);
+    } else if (isColorMode){
+      tone = toneFromColorDistance(data, work.width, work.height, p.garmentLab, p.colorTol, p.colorFeather, p.colorChroma, p.preserveLuma, p.gamma);
+    } else {
+      tone = toneFromLuminance(data, work.width, work.height, p.blackCut, p.whiteCut, p.gamma);
+    }
     let screenAlpha = null;
     if (p.halftoneOn) screenAlpha = makeHalftoneAlpha(tone, work.width, work.height, p);
     const finalAlpha = new Uint8ClampedArray(N);
@@ -4241,6 +4310,7 @@ html[data-theme="dark"] .btn.is-working{background:linear-gradient(110deg,#087f7
       contrast: p.contrast,
       sharpness: p.sharpness,
       separationMode: p.separationMode,
+      alphaRemovalMode: p.alphaRemovalMode,
       garmentLab: p.garmentLab,
       colorTol: p.colorTol,
       colorFeather: p.colorFeather,
@@ -4303,7 +4373,9 @@ html[data-theme="dark"] .btn.is-working{background:linear-gradient(110deg,#087f7
     enableDownload();
 
     const mode = p.halftoneOn ? 'halftone' : 'adjusted';
-    const sep = p.separationMode === 'color' ? `color (${S.garmentColor.hex})` : 'luminance';
+    const sep = p.separationMode === 'alpha'
+      ? `neon + ${p.alphaRemovalMode === 'color' ? `color (${S.garmentColor.hex})` : 'luminance'}`
+      : (p.separationMode === 'color' ? `color (${S.garmentColor.hex})` : 'luminance');
     const tag = p.fastMode ? ` (fast preview ${work.width}×${work.height})` : '';
     setStatus(T(`Updated in ${((performance.now()-t0)|0)} ms · ${sep} · ${mode}${tag}`,
                 `Actualizado en ${((performance.now()-t0)|0)} ms · ${sep} · ${mode}${tag}`));
@@ -5406,10 +5478,10 @@ html[data-theme="dark"] .btn.is-working{background:linear-gradient(110deg,#087f7
     { sel: '.mode-btn[data-mode="color"] > span:first-child', en: 'By color', es: 'Por color' },
     { sel: '.mode-btn[data-mode="color"] .mode-tag', en: 'colored garment', es: 'prenda de color' },
     { sel: '.mode-btn[data-mode="alpha"] > span:first-child', en: 'Transparency / Neon', es: 'Transparencia / Neón' },
-    { sel: '.mode-btn[data-mode="alpha"] .mode-tag', en: 'soft alpha PNG', es: 'PNG con alfa suave' },
+    { sel: '.mode-btn[data-mode="alpha"] .mode-tag', en: 'alpha + garment removal', es: 'alfa + quitar prenda' },
     { sel: '#separationHelp', html: true,
-      en: '<b>By luminance</b>: dark areas of the image are removed (ideal for <b>black</b> garments).<br><b>By color</b>: areas matching the chosen garment color are removed (ideal for <b>red, blue, beige</b>, etc.). Halftone appears ONLY in the transition band.<br><b>Transparency / Neon</b>: converts gradual PNG opacity into printable binary dots while preserving RGB color.',
-      es: '<b>Por luminancia</b>: elimina las zonas oscuras de la imagen (ideal para prendas <b>negras</b>).<br><b>Por color</b>: elimina las zonas que coinciden con el color elegido de la prenda (ideal para <b>rojo, azul, beige</b>, etc.). El semitono aparece ÚNICAMENTE en la banda de transición.<br><b>Transparencia / Neón</b>: convierte la opacidad gradual de un PNG en puntos binarios imprimibles, conservando el color RGB.' },
+      en: '<b>By luminance</b>: dark areas of the image are removed (ideal for <b>black</b> garments).<br><b>By color</b>: areas matching the chosen garment color are removed (ideal for <b>red, blue, beige</b>, etc.). Halftone appears ONLY in the transition band.<br><b>Transparency / Neon</b>: screens gradual PNG opacity and also removes the selected garment color in the same pass.',
+      es: '<b>Por luminancia</b>: elimina las zonas oscuras de la imagen (ideal para prendas <b>negras</b>).<br><b>Por color</b>: elimina las zonas que coinciden con el color elegido de la prenda (ideal para <b>rojo, azul, beige</b>, etc.). El semitono aparece ÚNICAMENTE en la banda de transición.<br><b>Transparencia / Neón</b>: trama la opacidad gradual del PNG y también elimina el color de prenda seleccionado en la misma pasada.' },
     { labelFor: 'gamma',         en: 'Gamma ', es: 'Gamma ', textOnly: true },
     { labelFor: 'black_cut',     en: 'Black cut ', es: 'Corte de negros ', textOnly: true },
     { labelFor: 'white_cut',     en: 'White cut ', es: 'Corte de blancos ', textOnly: true },
