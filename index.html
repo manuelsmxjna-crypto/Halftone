@@ -5036,11 +5036,21 @@ html[data-theme="dark"] .btn.is-working{background:linear-gradient(110deg,#087f7
   //   Cambia qué bloque de controles se ve. NO toca pixeles ni alpha:
   //   solo determina qué función `toneFrom*` usa runProcess para construir
   //   el tono que alimenta al semitono.
+  function refreshSeparationControlBlocks(){
+    const mode = S.separationMode;
+    const alphaUsesColor = mode === 'alpha' && S.garmentColor.hex.toUpperCase() !== '#000000';
+    const showLuminance = mode === 'luminance' || (mode === 'alpha' && !alphaUsesColor);
+    const showColor = mode === 'color' || alphaUsesColor;
+    $('lum-mode-block').classList.toggle('hidden', !showLuminance);
+    $('color-mode-block').classList.toggle('hidden', !showColor);
+  }
+
   function setSeparationMode(mode){
     if (!['luminance','color','alpha'].includes(mode)) mode = 'luminance';
     S.separationMode = mode;
-    $('lum-mode-block').classList.toggle('hidden', mode !== 'luminance');
-    $('color-mode-block').classList.toggle('hidden', mode !== 'color');
+    // Neon exposes the controls for its second stage: black/white cuts on a
+    // black garment, or color-distance controls on a chromatic garment.
+    refreshSeparationControlBlocks();
     document.querySelectorAll('#modeToggle .mode-btn').forEach((b) => {
       const active = b.dataset.mode === mode;
       b.classList.toggle('active', active);
@@ -5122,6 +5132,7 @@ html[data-theme="dark"] .btn.is-working{background:linear-gradient(110deg,#087f7
     document.querySelectorAll('#garmentTypeGrid .g-type').forEach((b) => {
       b.classList.toggle('active', b.dataset.preset === S.garmentPreset);
     });
+    refreshSeparationControlBlocks();
     if ((!opts || !opts.skipReprocess) && S.sourceCanvas){
       scheduleManualReprocess();
     }
