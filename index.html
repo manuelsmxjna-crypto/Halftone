@@ -5155,12 +5155,15 @@ html[data-theme="dark"] .btn.is-working{background:linear-gradient(110deg,#087f7
   // (Los antiguos .g-preset fueron reemplazados por .g-type — los presets
   //  de tipo de prenda. Su handler está más arriba.)
 
-  // Sliders de modo color → triggear reproceso (los live-labels ya están)
+  // Color-distance controls update both the standalone Color mode and the
+  // second stage of Neon when a chromatic garment is selected.
   ['color_tol','color_feather','color_chroma','preserve_luma'].forEach((id) => {
     const el = $(id);
     if (!el) return;
     el.addEventListener('input', () => {
-      if (S.separationMode === 'color' && S.sourceCanvas) scheduleProcess();
+      const neonUsesColor = S.separationMode === 'alpha'
+        && S.garmentColor.hex.toUpperCase() !== '#000000';
+      if ((S.separationMode === 'color' || neonUsesColor) && S.sourceCanvas) scheduleProcess();
     });
   });
 
